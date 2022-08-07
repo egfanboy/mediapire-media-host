@@ -1,6 +1,8 @@
 package app
 
 import (
+	"log"
+	"os"
 	"sync"
 
 	"github.com/egfanboy/mediapire-common/router"
@@ -8,18 +10,27 @@ import (
 
 type App struct {
 	ControllerRegistry *router.ControllerRegistry
+	Logger             *log.Logger
+	Config
 }
 
 var a *App
 
 var o = sync.Once{}
 
-func initApp() {
+func initApp() error {
 	o.Do(func() {
 		if a == nil {
-			a = &App{ControllerRegistry: router.NewControllerRegistry()}
+			config, err := readConfig()
+
+			if err != nil {
+				return
+			}
+			a = &App{ControllerRegistry: router.NewControllerRegistry(), Logger: log.New(os.Stdout, "mediapire.media-host.main", log.Ldate|log.Ltime), Config: config}
 		}
 	})
+
+	return nil
 }
 
 func GetApp() *App {
@@ -29,5 +40,6 @@ func GetApp() *App {
 }
 
 func init() {
+	// todo: handle error
 	initApp()
 }
