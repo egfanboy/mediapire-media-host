@@ -1,13 +1,12 @@
 package fs
 
 import (
-	"fmt"
-	"log"
 	"mediapire-media-host/cmd/media"
 	"os"
 	"path/filepath"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/rs/zerolog/log"
 )
 
 type fsService struct {
@@ -24,7 +23,7 @@ func (s *fsService) WatchDirectory(directory string) error {
 		newW, err := fsnotify.NewWatcher()
 
 		if err != nil {
-			log.Fatal("NewWatcher failed: ", err)
+			log.Error().Err(err).Msgf("Failed to create new watcher for directory: %s", directory)
 
 			return err
 		}
@@ -47,7 +46,7 @@ func (s *fsService) WatchDirectory(directory string) error {
 					//  TODO: only scan directory that changed
 					err := s.mediaService.ScanDirectory(directory)
 					if err != nil {
-						fmt.Printf("Failed to scan directory: %s", directory)
+						log.Error().Err(err).Msgf("Failed to scan directory: %s", directory)
 					}
 				}
 
@@ -55,17 +54,19 @@ func (s *fsService) WatchDirectory(directory string) error {
 				if !ok {
 					return
 				}
-				log.Println("error:", err)
+				log.Error().Err(err).Msgf("An error occured in the watcher for directory %s", directory)
 			}
 		}
 
 	}()
 
-	err := filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
+	// Errors are handled internally
+	filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
 
 		// If there is an error, just skip since we don't want one error to shutdown everything
 		if err != nil {
-			fmt.Printf("Failed to start walking directory: %s", path)
+			log.Warn().Err(err).Msgf("Error occured when walking %s, skipping.", path)
+
 			return filepath.SkipDir
 		}
 
@@ -73,18 +74,14 @@ func (s *fsService) WatchDirectory(directory string) error {
 			err = watcher.Add(path)
 
 			if err != nil {
-				fmt.Printf("Failed to start watching directory: %s", path)
+				log.Error().Err(err).Msgf("Failed to start watching directory: %s", path)
 			}
 		}
 
 		return nil
 	})
 
-	if err != nil {
-		fmt.Print("Failed to start watchers for directory: " + directory)
-	}
-
-	return err
+	return nil
 }
 
 func (s *fsService) CloseWatchers() {

@@ -7,6 +7,7 @@ require (
 	github.com/egfanboy/mediapire-common v0.0.0-20220724224214-34e6c5e04886
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/gorilla/mux v1.8.0
+	github.com/rs/zerolog v1.27.0 // indirect
 	github.com/tcolgate/mp3 v0.0.0-20170426193717-e79c5a46d300 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

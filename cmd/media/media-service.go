@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/rs/zerolog/log"
 )
 
 type mediaService struct {
@@ -49,7 +51,8 @@ func (s *mediaService) ScanDirectories(directories ...string) (err error) {
 		err = s.ScanDirectory(d)
 
 		if err != nil {
-			fmt.Printf("Failed to scan directory %s due to %s", d, err.Error())
+			log.Error().Err(err).Str("directory", d)
+
 			failed = append(failed, d)
 		}
 	}
@@ -64,13 +67,13 @@ func (s *mediaService) ScanDirectories(directories ...string) (err error) {
 func (s *mediaService) ScanDirectory(directory string) (err error) {
 
 	items := make([]MediaItem, 0)
-	scanErrors := make([]error, 0)
 
 	wg := sync.WaitGroup{}
 
 	err = filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return err
+			log.Warn().Err(err).Msgf("Error occured when walking %s, skipping.", path)
+			return filepath.SkipDir
 		}
 
 		ext := filepath.Ext(path)
@@ -89,20 +92,18 @@ func (s *mediaService) ScanDirectory(directory string) (err error) {
 
 					item, err := factory(path, ext, info)
 
-					item.Path = path
-
-					fmt.Println(err)
-
 					if err != nil {
-						scanErrors = append(scanErrors, err)
+						log.Error().Err(err).Str("file", info.Name())
 						return
 					}
+
+					item.Path = path
 
 					items = append(items, item)
 				}()
 
 			} else {
-				s.app.Logger.Println(fmt.Sprintf("No factory for supported media type %s, cannot parse file.", ext))
+				log.Warn().Msgf("No factory for supported media type %s, cannot parse file.", ext)
 			}
 		}
 
@@ -110,11 +111,6 @@ func (s *mediaService) ScanDirectory(directory string) (err error) {
 	})
 
 	wg.Wait()
-
-	if len(scanErrors) != 0 {
-		// TODO: better error handling
-		panic(err)
-	}
 
 	// Add to cache
 	mediaCache[directory] = items
