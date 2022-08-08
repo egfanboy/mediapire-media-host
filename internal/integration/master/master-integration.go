@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"mediapire-media-host/cmd/app"
+	"mediapire-media-host/internal/app"
 
 	"net"
 	"net/http"

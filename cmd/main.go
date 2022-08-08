@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"mediapire-media-host/cmd/app"
-	"mediapire-media-host/cmd/fs"
-	_ "mediapire-media-host/cmd/health"
-	"mediapire-media-host/cmd/integration/master"
-	"mediapire-media-host/cmd/media"
+	"mediapire-media-host/internal/app"
+	"mediapire-media-host/internal/fs"
+	_ "mediapire-media-host/internal/health"
+	"mediapire-media-host/internal/integration/master"
+	"mediapire-media-host/internal/media"
 	"net/http"
 	"os"
 	"time"

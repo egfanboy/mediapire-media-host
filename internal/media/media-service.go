@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"mediapire-media-host/cmd/app"
+	"mediapire-media-host/internal/app"
 	"os"
 	"path/filepath"
 	"strings"

@@ -1,7 +1,7 @@
 package fs
 
 import (
-	"mediapire-media-host/cmd/media"
+	"mediapire-media-host/internal/media"
 	"os"
 	"path/filepath"
 

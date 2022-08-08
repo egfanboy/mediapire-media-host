@@ -1,7 +1,7 @@
 package node
 
 import (
-	"mediapire-media-host/cmd/app"
+	"mediapire-media-host/internal/app"
 	"net/http"
 
 	"github.com/egfanboy/mediapire-common/router"
