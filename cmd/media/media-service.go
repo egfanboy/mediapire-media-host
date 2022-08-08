@@ -83,7 +83,7 @@ func (s *mediaService) ScanDirectory(directory string) (err error) {
 			ext = strings.ReplaceAll(ext, ".", "")
 		}
 
-		if s.app.Config.IsMediaSupported(ext) {
+		if s.app.IsMediaSupported(ext) {
 			if factory, ok := mediaTypeFactory[ext]; ok {
 				wg.Add(1)
 
