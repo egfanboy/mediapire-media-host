@@ -1,4 +1,4 @@
-package master
+package manager
 
 import (
 	"bytes"
@@ -8,6 +8,8 @@ import (
 
 	"net"
 	"net/http"
+
+	"github.com/rs/zerolog/log"
 )
 
 type masterIntegration struct {
@@ -37,6 +39,11 @@ func (i *masterIntegration) RegisterNode(masterScheme string, masterHost string,
 
 	// Return error if status code is over 3XX
 	if resp != nil && resp.StatusCode >= 300 {
+		if resp.StatusCode == http.StatusConflict {
+			log.Info().Msg("Got a conflict when trying to register ourselves. Therefore, we are registered")
+
+			return nil
+		}
 		return fmt.Errorf("media-host %s returned status code %d", hostUri, resp.StatusCode)
 	}
 
@@ -55,7 +62,6 @@ func findTrafficIp() (net.IP, error) {
 	return localAddr.IP, nil
 }
 
-func NewMasterIntegration() MasterApi {
+func NewManagerIntegration() ManagerApi {
 	return &masterIntegration{app: app.GetApp()}
-
 }

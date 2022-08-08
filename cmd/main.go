@@ -5,7 +5,7 @@ import (
 	"mediapire-media-host/internal/app"
 	"mediapire-media-host/internal/fs"
 	_ "mediapire-media-host/internal/health"
-	"mediapire-media-host/internal/integration/master"
+	"mediapire-media-host/internal/integration/manager"
 	"mediapire-media-host/internal/media"
 	"net/http"
 	"os"
@@ -76,7 +76,7 @@ func initiliazeApp() {
 	defer srv.Close()
 
 	log.Debug().Msg("Calling master node to register ourselves")
-	err = master.NewMasterIntegration().RegisterNode(mediaHost.Master.Scheme, mediaHost.Master.Host, mediaHost.Master.Port)
+	err = manager.NewManagerIntegration().RegisterNode(mediaHost.Manager.Scheme, mediaHost.Manager.Host, mediaHost.Manager.Port)
 
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to register to master node, exiting")

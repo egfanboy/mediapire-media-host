@@ -1,4 +1,4 @@
-package master
+package manager
 
 type registerRequest struct {
 	Host   string `json:"host"`
