@@ -1,2 +1,14 @@
+# Directories to scan for media
 directories:
+# Type of media we want to scan
 fileTypes:
+# configuration for media host (self)
+mediaHost:
+  scheme: http
+  # port of the media host (self) instance
+  port: 444
+  # connection information for media master
+master:
+  scheme: http
+  host: "<SOME_HOST>"
+  port: 443

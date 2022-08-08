@@ -9,7 +9,22 @@ import (
 type App struct {
 	ControllerRegistry *router.ControllerRegistry
 
-	Config
+	config
+}
+
+func (a *App) IsMediaSupported(extension string) bool {
+
+	for _, t := range a.config.FileTypes {
+		if extension == t {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (a *App) GetDirectories() []string {
+	return a.Directories
 }
 
 var a *App
@@ -24,7 +39,7 @@ func initApp() error {
 			if err != nil {
 				return
 			}
-			a = &App{ControllerRegistry: router.NewControllerRegistry(), Config: config}
+			a = &App{ControllerRegistry: router.NewControllerRegistry(), config: config}
 		}
 	})
 
