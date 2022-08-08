@@ -5,6 +5,8 @@ github.com/dhowden/tag v0.0.0-20220618230019-adf36e896086 h1:ORubSQoKnncsBnR4zD9
 github.com/dhowden/tag v0.0.0-20220618230019-adf36e896086/go.mod h1:Z3Lomva4pyMWYezjMAU5QWRh0p1VvO4199OHlFnyKkM=
 github.com/egfanboy/mediapire-common v0.0.0-20220724224214-34e6c5e04886 h1:a5PSexg5F1e/mrhNT4IF7ZowQZNQjI+5T5YyOnZoZ1o=
 github.com/egfanboy/mediapire-common v0.0.0-20220724224214-34e6c5e04886/go.mod h1:PfxxoHTUvFmiaEvmipwuReMmo8jQqe9mhHtWODuL7OI=
+github.com/egfanboy/mediapire-common v0.0.0-20220808204123-47a46a36a0b3 h1:fCX+SFEG0NqI/BdLVVCTwsbja/IgjE/jjRBReCY02io=
+github.com/egfanboy/mediapire-common v0.0.0-20220808204123-47a46a36a0b3/go.mod h1:PfxxoHTUvFmiaEvmipwuReMmo8jQqe9mhHtWODuL7OI=
 github.com/fsnotify/fsnotify v1.5.4 h1:jRbGcIw6P2Meqdwuo0H1p6JVLbL5DHKAKlYndzMwVZI=
 github.com/fsnotify/fsnotify v1.5.4/go.mod h1:OVB6XrOHzAwXMpEM7uPOzcehqUV2UqJxmVXmkdnm1bU=
 github.com/godbus/dbus/v5 v5.0.4/go.mod h1:xhWf0FNVPg57R7Z0UbKHbJfkEywrmjJnf7w5xrFpKfA=

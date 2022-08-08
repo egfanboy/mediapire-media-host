@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	github.com/dhowden/tag v0.0.0-20220618230019-adf36e896086 // indirect
-	github.com/egfanboy/mediapire-common v0.0.0-20220724224214-34e6c5e04886
+	github.com/egfanboy/mediapire-common v0.0.0-20220808204123-47a46a36a0b3
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/gorilla/mux v1.8.0
 	github.com/rs/zerolog v1.27.0 // indirect
