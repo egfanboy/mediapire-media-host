@@ -2,14 +2,15 @@ package main
 
 import (
 	"fmt"
-	"mediapire-media-host/internal/app"
-	"mediapire-media-host/internal/fs"
-	_ "mediapire-media-host/internal/health"
-	"mediapire-media-host/internal/integration/manager"
-	"mediapire-media-host/internal/media"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/egfanboy/mediapire-media-host/internal/app"
+	"github.com/egfanboy/mediapire-media-host/internal/fs"
+	_ "github.com/egfanboy/mediapire-media-host/internal/health"
+	"github.com/egfanboy/mediapire-media-host/internal/integration/manager"
+	"github.com/egfanboy/mediapire-media-host/internal/media"
 
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"

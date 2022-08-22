@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"mediapire-media-host/internal/app"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/egfanboy/mediapire-media-host/internal/app"
+	"github.com/egfanboy/mediapire-media-host/pkg/types"
 
 	"github.com/rs/zerolog/log"
 )
@@ -21,9 +23,9 @@ var mediaTypeFactory = map[string]mediaFactory{
 	"mp3": mp3Factory,
 }
 
-var mediaCache = map[string][]MediaItem{}
+var mediaCache = map[string][]types.MediaItem{}
 
-func unwrapCache() (unwrappedItems []MediaItem) {
+func unwrapCache() (unwrappedItems []types.MediaItem) {
 
 	for _, items := range mediaCache {
 		unwrappedItems = append(unwrappedItems, items...)
@@ -32,7 +34,7 @@ func unwrapCache() (unwrappedItems []MediaItem) {
 	return
 }
 
-func (s *mediaService) GetMedia(ctx context.Context) (items []MediaItem, err error) {
+func (s *mediaService) GetMedia(ctx context.Context) (items []types.MediaItem, err error) {
 
 	if len(mediaCache) == 0 {
 		err = errors.New("no media found")
@@ -66,7 +68,7 @@ func (s *mediaService) ScanDirectories(directories ...string) (err error) {
 
 func (s *mediaService) ScanDirectory(directory string) (err error) {
 
-	items := make([]MediaItem, 0)
+	items := make([]types.MediaItem, 0)
 
 	wg := sync.WaitGroup{}
 
