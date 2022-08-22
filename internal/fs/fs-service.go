@@ -1,9 +1,10 @@
 package fs
 
 import (
-	"mediapire-media-host/internal/media"
 	"os"
 	"path/filepath"
+
+	"github.com/egfanboy/mediapire-media-host/internal/media"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/rs/zerolog/log"

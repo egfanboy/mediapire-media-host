@@ -6,13 +6,15 @@ import (
 	"os"
 	"strings"
 
+	"github.com/egfanboy/mediapire-media-host/pkg/types"
+
 	"github.com/dhowden/tag"
 	"github.com/tcolgate/mp3"
 )
 
-type mediaFactory func(path string, ext string, info os.FileInfo) (item MediaItem, err error)
+type mediaFactory func(path string, ext string, info os.FileInfo) (item types.MediaItem, err error)
 
-func mp3Factory(path string, ext string, info os.FileInfo) (item MediaItem, err error) {
+func mp3Factory(path string, ext string, info os.FileInfo) (item types.MediaItem, err error) {
 
 	f, err := os.OpenFile(path, 0, fs.FileMode(os.O_RDONLY))
 

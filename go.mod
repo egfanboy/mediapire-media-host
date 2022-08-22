@@ -1,4 +1,4 @@
-module mediapire-media-host
+module github.com/egfanboy/mediapire-media-host
 
 go 1.16
 
