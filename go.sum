@@ -3,10 +3,8 @@ github.com/dhowden/itl v0.0.0-20170329215456-9fbe21093131/go.mod h1:eVWQJVQ67aMv
 github.com/dhowden/plist v0.0.0-20141002110153-5db6e0d9931a/go.mod h1:sLjdR6uwx3L6/Py8F+QgAfeiuY87xuYGwCDqRFrvCzw=
 github.com/dhowden/tag v0.0.0-20220618230019-adf36e896086 h1:ORubSQoKnncsBnR4zD9CuYFJCPOCuSNEpWEZrDdBXkc=
 github.com/dhowden/tag v0.0.0-20220618230019-adf36e896086/go.mod h1:Z3Lomva4pyMWYezjMAU5QWRh0p1VvO4199OHlFnyKkM=
-github.com/egfanboy/mediapire-common v0.0.0-20220724224214-34e6c5e04886 h1:a5PSexg5F1e/mrhNT4IF7ZowQZNQjI+5T5YyOnZoZ1o=
-github.com/egfanboy/mediapire-common v0.0.0-20220724224214-34e6c5e04886/go.mod h1:PfxxoHTUvFmiaEvmipwuReMmo8jQqe9mhHtWODuL7OI=
-github.com/egfanboy/mediapire-common v0.0.0-20220808204123-47a46a36a0b3 h1:fCX+SFEG0NqI/BdLVVCTwsbja/IgjE/jjRBReCY02io=
-github.com/egfanboy/mediapire-common v0.0.0-20220808204123-47a46a36a0b3/go.mod h1:PfxxoHTUvFmiaEvmipwuReMmo8jQqe9mhHtWODuL7OI=
+github.com/egfanboy/mediapire-common v0.0.0-20220828193527-bd4d006a2cb6 h1:/Xu++MnB1xx/Y4dqCFHrK75oLGQaTCN4BhwDMts6VA0=
+github.com/egfanboy/mediapire-common v0.0.0-20220828193527-bd4d006a2cb6/go.mod h1:PfxxoHTUvFmiaEvmipwuReMmo8jQqe9mhHtWODuL7OI=
 github.com/fsnotify/fsnotify v1.5.4 h1:jRbGcIw6P2Meqdwuo0H1p6JVLbL5DHKAKlYndzMwVZI=
 github.com/fsnotify/fsnotify v1.5.4/go.mod h1:OVB6XrOHzAwXMpEM7uPOzcehqUV2UqJxmVXmkdnm1bU=
 github.com/godbus/dbus/v5 v5.0.4/go.mod h1:xhWf0FNVPg57R7Z0UbKHbJfkEywrmjJnf7w5xrFpKfA=
@@ -26,6 +24,7 @@ golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c/go.mod h1:oPkhp1MJrh7nUepCBc
 golang.org/x/sys v0.0.0-20210927094055-39ccf1dd6fa6/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20220412211240-33da011f77ad h1:ntjMns5wyP/fN65tdBD4g8J5w8n015+iIIs9rtjXkY0=
 golang.org/x/sys v0.0.0-20220412211240-33da011f77ad/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
 gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
