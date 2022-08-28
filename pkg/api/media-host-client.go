@@ -2,7 +2,9 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/egfanboy/mediapire-media-host/pkg/types"
@@ -10,16 +12,39 @@ import (
 
 type MediaHostApi interface {
 	GetHealth(h types.Host) (*http.Response, error)
+	GetMedia(h types.Host) ([]types.MediaItem, *http.Response, error)
 }
 
-type mediaHostIntegration struct{}
+func buildUriFromHost(h types.Host, apiUri string) string {
+	return fmt.Sprintf("%s://%s:%v%s", h.Scheme(), h.Host(), h.Port(), apiUri)
 
-func (i *mediaHostIntegration) GetHealth(h types.Host) (*http.Response, error) {
-	hostUri := fmt.Sprintf("%s:%v", h.Host(), h.Port())
-
-	return http.Get(fmt.Sprintf("%s://%s/api/v1/health", h.Scheme(), hostUri))
 }
 
-func NewIntegration(ctx context.Context) MediaHostApi {
-	return &mediaHostIntegration{}
+type mediaHostClient struct{}
+
+func (c *mediaHostClient) GetHealth(h types.Host) (*http.Response, error) {
+
+	return http.Get(buildUriFromHost(h, "/api/v1/health"))
+}
+
+func (c *mediaHostClient) GetMedia(h types.Host) (result []types.MediaItem, r *http.Response, err error) {
+
+	r, err = http.Get(buildUriFromHost(h, "/api/v1/media"))
+	if err != nil {
+		return
+	}
+
+	body, err := ioutil.ReadAll(r.Body)
+	defer r.Body.Close()
+	if err != nil {
+		return
+	}
+
+	err = json.Unmarshal(body, &result)
+
+	return
+}
+
+func NewClient(ctx context.Context) MediaHostApi {
+	return &mediaHostClient{}
 }

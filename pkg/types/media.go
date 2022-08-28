@@ -1,8 +1,8 @@
 package types
 
 type MediaItem struct {
-	Name      string
-	Extension string
-	Path      string
-	Metadata  interface{}
+	Name      string      `json:"name"`
+	Extension string      `json:"extenstion"`
+	Path      string      `json:"path"`
+	Metadata  interface{} `json:"metadata"`
 }

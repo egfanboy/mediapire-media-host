@@ -4,13 +4,6 @@ import (
 	"github.com/dhowden/tag"
 )
 
-type MediaItem struct {
-	Name      string
-	Extension string
-	Path      string
-	Metadata  interface{}
-}
-
 type Mp3Metadata struct {
 	Artist     string
 	Title      string
