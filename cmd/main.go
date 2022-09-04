@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -22,6 +23,8 @@ func main() {
 }
 
 func initiliazeApp() {
+	ctx := context.Background()
+
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 
 	log.Info().Msg("Initializing app")
@@ -77,7 +80,7 @@ func initiliazeApp() {
 	defer srv.Close()
 
 	log.Debug().Msg("Calling master node to register ourselves")
-	err = manager.NewManagerIntegration().RegisterNode(mediaHost.Manager.Scheme, mediaHost.Manager.Host, mediaHost.Manager.Port)
+	err = manager.NewManagerIntegration(ctx).RegisterNode()
 
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to register to master node, exiting")
