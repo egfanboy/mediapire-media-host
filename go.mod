@@ -4,7 +4,8 @@ go 1.16
 
 require (
 	github.com/dhowden/tag v0.0.0-20220618230019-adf36e896086
-	github.com/egfanboy/mediapire-common v0.0.0-20220828193527-bd4d006a2cb6
+	github.com/egfanboy/mediapire-common v0.0.0-20220905143518-e3d4d7ef0bac
+	github.com/egfanboy/mediapire-manager v0.0.0-20220904162026-6b73483348a2
 	github.com/fsnotify/fsnotify v1.5.4
 	github.com/gorilla/mux v1.8.0
 	github.com/rs/zerolog v1.27.0
@@ -14,3 +15,4 @@ require (
 
 //  uncomment for local development
 // replace github.com/egfanboy/mediapire-common => ../mediapire-common
+// replace github.com/egfanboy/mediapire-manager => ../mediapire-manager
