@@ -6,13 +6,19 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 
 	"github.com/egfanboy/mediapire-media-host/pkg/types"
+)
+
+const (
+	baseMediaPath = "/api/v1/media"
 )
 
 type MediaHostApi interface {
 	GetHealth(h types.Host) (*http.Response, error)
 	GetMedia(h types.Host) ([]types.MediaItem, *http.Response, error)
+	StreamMedia(h types.Host, fileName string) ([]byte, *http.Response, error)
 }
 
 func buildUriFromHost(h types.Host, apiUri string) string {
@@ -29,7 +35,7 @@ func (c *mediaHostClient) GetHealth(h types.Host) (*http.Response, error) {
 
 func (c *mediaHostClient) GetMedia(h types.Host) (result []types.MediaItem, r *http.Response, err error) {
 
-	r, err = http.Get(buildUriFromHost(h, "/api/v1/media"))
+	r, err = http.Get(buildUriFromHost(h, baseMediaPath))
 	if err != nil {
 		return
 	}
@@ -41,6 +47,20 @@ func (c *mediaHostClient) GetMedia(h types.Host) (result []types.MediaItem, r *h
 	}
 
 	err = json.Unmarshal(body, &result)
+
+	return
+}
+
+func (c *mediaHostClient) StreamMedia(h types.Host, filePath string) (b []byte, r *http.Response, err error) {
+	r, err = http.Get(buildUriFromHost(h, fmt.Sprintf("%s/stream?filePath=%s", baseMediaPath, url.QueryEscape(filePath))))
+
+	if err != nil {
+		return
+	}
+
+	b, err = ioutil.ReadAll(r.Body)
+
+	defer r.Body.Close()
 
 	return
 }

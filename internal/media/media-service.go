@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 
+	"github.com/egfanboy/mediapire-common/exceptions"
 	"github.com/egfanboy/mediapire-media-host/internal/app"
 	"github.com/egfanboy/mediapire-media-host/pkg/types"
 
@@ -118,6 +120,26 @@ func (s *mediaService) ScanDirectory(directory string) (err error) {
 	mediaCache[directory] = items
 
 	return
+}
+
+func (s *mediaService) StreamMedia(ctx context.Context, filePath string) ([]byte, error) {
+	file, err := os.Open(filePath)
+
+	if err != nil && err == os.ErrNotExist {
+		return nil, exceptions.ApiException{Err: err, StatusCode: http.StatusNotFound}
+	}
+
+	fileInfo, err := file.Stat()
+
+	if err != nil {
+		return nil, err
+	}
+
+	b := make([]byte, fileInfo.Size())
+
+	_, err = file.Read(b)
+
+	return b, err
 }
 
 func NewMediaService() MediaApi {
