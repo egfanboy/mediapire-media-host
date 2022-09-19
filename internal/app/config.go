@@ -30,7 +30,7 @@ func readConfig() (s config, err error) {
 	if err != nil {
 		return
 	}
-	f, err := os.ReadFile(path + "/../config.yaml")
+	f, err := os.ReadFile(path + "./config.yaml")
 
 	if err != nil {
 		return
