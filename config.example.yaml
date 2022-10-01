@@ -7,7 +7,7 @@ mediaHost:
   scheme: http
   # port of the media host (self) instance
   port: 444
-  # connection information for media master
+  # connection information for media manager
 manager:
   scheme: http
   host: "<SOME_HOST>"
