@@ -1,6 +1,7 @@
 package app
 
 import (
+	"flag"
 	"os"
 
 	"gopkg.in/yaml.v3"
@@ -25,12 +26,22 @@ type config struct {
 }
 
 func readConfig() (s config, err error) {
-	path, err := os.Getwd()
+	var configPath string
+	flag.StringVar(&configPath, "config", "", "optional path to config file")
 
-	if err != nil {
-		return
+	flag.Parse()
+
+	if configPath == "" {
+		cwd, err := os.Getwd()
+
+		if err != nil {
+			return s, err
+		}
+
+		configPath = cwd + "/config.yaml"
 	}
-	f, err := os.ReadFile(path + "./config.yaml")
+
+	f, err := os.ReadFile(configPath)
 
 	if err != nil {
 		return
