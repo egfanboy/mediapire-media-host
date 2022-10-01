@@ -1,0 +1,90 @@
+openapi: 3.0.3
+servers:
+  - url: http://127.0.0.1:9797
+info:
+  title: Media host - OpenAPI 3.0
+  description: |-
+    Open API definition for media host APIs
+  version: 1.0.0
+tags:
+  - name: Media
+    description: Media on host
+  - name: Health
+    description: Health of the host
+paths:
+  /api/v1/media:
+    get:
+      tags:
+        - Media
+      summary: Get all media from host
+      description: Gets all the available media items on the host
+      operationId: getAllMedia
+      responses:
+        "200":
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MediaItem"
+        "400":
+          description: Invalid request
+        "500":
+          description: Failed to handle
+  /api/v1/media/stream:
+    get:
+      tags:
+        - Media
+      summary: Stream selected file
+      description: Must provide filePath and nodeId
+      operationId: streamMedia
+      parameters:
+        - name: filePath
+          in: query
+          description: Path of the file to stream
+          required: true
+          schema:
+            type: string
+        # - name: nodeId
+        #   in: query
+        #   description: Id of the node to play the media from
+      responses:
+        "200":
+          description: successful operation
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+                maxLength: 12345
+        "400":
+          description: Invalid status value
+  /api/v1/health:
+    get:
+      tags:
+        - Health
+      summary: Get health
+      description: Determines if node is reachable
+      operationId: getHealth
+      responses:
+        "200":
+          description: successful operation
+components:
+  schemas:
+    MediaItem:
+      type: object
+      properties:
+        name:
+          type: string
+          example: some-file
+        extension:
+          type: string
+          example: txt
+        path:
+          type: string
+          example: /user/my-user/media/file.txt
+        metadata:
+          type: object
+          additionalProperties: true
+          example: { "title": "some-file" }
