@@ -36,14 +36,29 @@ func unwrapCache() (unwrappedItems []types.MediaItem) {
 	return
 }
 
-func (s *mediaService) GetMedia(ctx context.Context) (items []types.MediaItem, err error) {
+func (s *mediaService) GetMedia(ctx context.Context, mediaTypes []string) (items []types.MediaItem, err error) {
+	items = make([]types.MediaItem, 0)
 
 	if len(mediaCache) == 0 {
 		err = errors.New("no media found")
 		return
 	}
 
-	items = unwrapCache()
+	unwrappedCache := unwrapCache()
+
+	if len(mediaTypes) == 0 {
+		items = unwrappedCache
+
+		return
+
+	}
+
+	for _, item := range unwrappedCache {
+		mediaTypesToCheck := strings.Join(mediaTypes, ",")
+		if strings.Contains(mediaTypesToCheck, item.Extension) {
+			items = append(items, item)
+		}
+	}
 
 	return
 }

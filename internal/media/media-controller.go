@@ -2,6 +2,7 @@ package media
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/egfanboy/mediapire-media-host/internal/app"
 
@@ -27,10 +28,17 @@ func (c mediaController) GetApis() (routes []router.RouteBuilder) {
 func (c mediaController) GetMedia() router.RouteBuilder {
 	return router.NewV1RouteBuilder().
 		SetMethod(http.MethodOptions, http.MethodGet).
+		AddQueryParam(router.QueryParam{Name: "mediaType", Required: false}).
 		SetPath(basePath).
 		SetReturnCode(http.StatusOK).
 		SetHandler(func(request *http.Request, p router.RouteParams) (interface{}, error) {
-			items, err := c.service.GetMedia(request.Context())
+			mediaTypes := make([]string, 0)
+
+			if p.Params["mediaType"] != "" {
+				mediaTypes = strings.Split(p.Params["mediaType"], ",")
+			}
+
+			items, err := c.service.GetMedia(request.Context(), mediaTypes)
 			return items, err
 		})
 }
