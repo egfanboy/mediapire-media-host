@@ -12,16 +12,16 @@ type SelfCfg struct {
 	Port   int    `yaml:"port"`
 }
 
-type managerCfg struct {
-	Scheme string `yaml:"scheme"`
-	Host   string `yaml:"host"`
-	Port   int    `yaml:"port"`
+type consulCfg struct {
+	Scheme  string `yaml:"scheme"`
+	Address string `yaml:"address"`
+	Port    int    `yaml:"port"`
 }
 
 type config struct {
-	Directories []string   `yaml:"directories"`
-	FileTypes   []string   `yaml:"fileTypes"`
-	Manager     managerCfg `yaml:"manager"`
+	Directories []string  `yaml:"directories"`
+	FileTypes   []string  `yaml:"fileTypes"`
+	Consul      consulCfg `yaml:"consul"`
 	SelfCfg     `yaml:"mediaHost"`
 }
 
