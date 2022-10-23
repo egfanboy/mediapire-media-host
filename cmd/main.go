@@ -1,16 +1,16 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
 	"time"
 
 	"github.com/egfanboy/mediapire-media-host/internal/app"
+	"github.com/egfanboy/mediapire-media-host/internal/consul"
 	"github.com/egfanboy/mediapire-media-host/internal/fs"
 	_ "github.com/egfanboy/mediapire-media-host/internal/health"
-	"github.com/egfanboy/mediapire-media-host/internal/integration/manager"
 	"github.com/egfanboy/mediapire-media-host/internal/media"
 
 	"github.com/gorilla/mux"
@@ -22,13 +22,26 @@ func main() {
 	initiliazeApp()
 }
 
-func initiliazeApp() {
-	ctx := context.Background()
+var cleanupFuncs []func()
 
+func addCleanupFunc(fn func()) {
+	cleanupFuncs = append(cleanupFuncs, fn)
+}
+
+func initiliazeApp() {
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 
 	log.Info().Msg("Initializing app")
-	c := make(chan struct{})
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	defer func() {
+		signal.Stop(c)
+		log.Info().Msg("Running cleanup functions")
+		for _, fn := range cleanupFuncs {
+			fn()
+		}
+	}()
 
 	fsService, _ := fs.NewFsService()
 	mediaHost := app.GetApp()
@@ -40,7 +53,8 @@ func initiliazeApp() {
 		log.Error().Err(err).Str("Directory", d)
 	}
 	log.Debug().Msg("Finished setting up file system watchers")
-	defer fsService.CloseWatchers()
+
+	addCleanupFunc(fsService.CloseWatchers)
 
 	// Scan the initial set of media
 	log.Debug().Msg("Scanning media")
@@ -77,14 +91,22 @@ func initiliazeApp() {
 
 	log.Debug().Msg("Webserver started")
 
-	defer srv.Close()
+	addCleanupFunc(func() { srv.Close() })
 
-	log.Debug().Msg("Calling master node to register ourselves")
-	err = manager.NewManagerIntegration(ctx).RegisterNode()
+	log.Debug().Msg("Registring ourselves to consul")
+
+	err = consul.NewConsulClient()
 
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to register to master node, exiting")
-		os.Exit(1)
+		log.Error().Err(err).Msg("Failed to create the consul client")
+	}
+
+	err = consul.RegisterService()
+
+	addCleanupFunc(func() { consul.UnregisterService() })
+
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to register to consul")
 	}
 
 	log.Debug().Msg("Registration successful")
