@@ -47,7 +47,13 @@ func (s *mediaService) GetMedia(ctx context.Context, mediaTypes []string) (items
 	unwrappedCache := unwrapCache()
 
 	if len(mediaTypes) == 0 {
+		groupingFuncs := getGroupingFactories(s.app.FileTypes...)
+
 		items = unwrappedCache
+
+		for _, fn := range groupingFuncs {
+			items = fn(items)
+		}
 
 		return
 
@@ -58,6 +64,13 @@ func (s *mediaService) GetMedia(ctx context.Context, mediaTypes []string) (items
 		if strings.Contains(mediaTypesToCheck, item.Extension) {
 			items = append(items, item)
 		}
+
+	}
+
+	groupingFuncs := getGroupingFactories(mediaTypes...)
+
+	for _, fn := range groupingFuncs {
+		items = fn(items)
 	}
 
 	return
