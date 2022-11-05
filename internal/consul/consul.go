@@ -62,6 +62,9 @@ func RegisterService() error {
 			Interval: "10s",
 			Timeout:  "30s",
 		},
+		Meta: map[string]string{
+			"scheme": self.Scheme,
+		},
 	}
 
 	return consulClient.Agent().ServiceRegister(registration)
