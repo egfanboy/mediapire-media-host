@@ -153,8 +153,8 @@ func (s *mediaService) ScanDirectory(directory string) (err error) {
 func (s *mediaService) StreamMedia(ctx context.Context, filePath string) ([]byte, error) {
 	file, err := os.Open(filePath)
 
-	if err != nil && err == os.ErrNotExist {
-		return nil, exceptions.ApiException{Err: err, StatusCode: http.StatusNotFound}
+	if err != nil && errors.Is(err, os.ErrInvalid) || errors.Is(err, os.ErrNotExist) {
+		return nil, &exceptions.ApiException{Err: err, StatusCode: http.StatusNotFound}
 	}
 
 	fileInfo, err := file.Stat()
