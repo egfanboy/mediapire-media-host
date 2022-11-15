@@ -32,9 +32,10 @@ func getGroupingFactories(mediaTypes ...string) []mediaGroupingFactory {
 
 // Groups songs by albums and returns them in alphabetical order based on album
 func mp3AlbumGrouper(items []types.MediaItem) []types.MediaItem {
-	albumMap := make(map[string][]types.MediaItem)
+	albumMap := make(map[string][]*types.MediaItem)
 
-	for _, item := range items {
+	for i := range items {
+		item := items[i]
 		if item.Extension != "mp3" {
 			continue
 		}
@@ -48,21 +49,21 @@ func mp3AlbumGrouper(items []types.MediaItem) []types.MediaItem {
 		if album, ok := albumMap[albumTitle]; !ok {
 			// we have metadata for number of tracks, create a slice of that size and put the songs in the proper order
 			if trackOf != 0 {
-				album := make([]types.MediaItem, trackOf)
+				album := make([]*types.MediaItem, trackOf)
 
-				album[metadata.TrackIndex-1] = item
+				album[metadata.TrackIndex-1] = &item
 
 				albumMap[albumTitle] = album
 			} else {
-				// create new key for album with the current item as the frist track
-				albumMap[albumTitle] = []types.MediaItem{item}
+				// create new key for album with the current item as the first track
+				albumMap[albumTitle] = []*types.MediaItem{&item}
 			}
 		} else {
 			// we have metadata for number of tracks, add track in proper spot
 			if trackOf != 0 {
-				album[metadata.TrackIndex-1] = item
+				album[metadata.TrackIndex-1] = &item
 			} else {
-				album = append(album, item)
+				album = append(album, &item)
 			}
 
 			albumMap[albumTitle] = album
@@ -82,7 +83,11 @@ func mp3AlbumGrouper(items []types.MediaItem) []types.MediaItem {
 
 	for _, album := range albums {
 		albumItems := albumMap[album]
-		itemsGroupedByAlbum = append(itemsGroupedByAlbum, albumItems...)
+		for _, item := range albumItems {
+			if item != nil {
+				itemsGroupedByAlbum = append(itemsGroupedByAlbum, *item)
+			}
+		}
 	}
 
 	return itemsGroupedByAlbum

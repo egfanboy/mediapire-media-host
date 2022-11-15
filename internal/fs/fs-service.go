@@ -45,6 +45,7 @@ func (s *fsService) WatchDirectory(directory string) error {
 				// Only ignore permission change events
 				if event.Op != fsnotify.Chmod {
 					//  TODO: only scan directory that changed
+					log.Debug().Msgf("Detected a change in directory %s, scanning it again for new media", directory)
 					err := s.mediaService.ScanDirectory(directory)
 					if err != nil {
 						log.Error().Err(err).Msgf("Failed to scan directory: %s", directory)
