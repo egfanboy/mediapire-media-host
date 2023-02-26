@@ -28,7 +28,6 @@ var mediaTypeFactory = map[string]mediaFactory{
 var mediaCache = map[string][]types.MediaItem{}
 
 func unwrapCache() (unwrappedItems []types.MediaItem) {
-
 	for _, items := range mediaCache {
 		unwrappedItems = append(unwrappedItems, items...)
 	}
@@ -81,7 +80,6 @@ func (s *mediaService) ScanDirectories(directories ...string) (err error) {
 
 	for _, d := range directories {
 		err = s.ScanDirectory(d)
-
 		if err != nil {
 			log.Error().Err(err).Str("directory", d)
 
@@ -97,7 +95,6 @@ func (s *mediaService) ScanDirectories(directories ...string) (err error) {
 }
 
 func (s *mediaService) ScanDirectory(directory string) (err error) {
-
 	items := make([]types.MediaItem, 0)
 
 	wg := sync.WaitGroup{}
@@ -168,6 +165,12 @@ func (s *mediaService) StreamMedia(ctx context.Context, filePath string) ([]byte
 	_, err = file.Read(b)
 
 	return b, err
+}
+
+func (s *mediaService) UnsetDirectory(directory string) error {
+	delete(mediaCache, directory)
+
+	return nil
 }
 
 func NewMediaService() MediaApi {
