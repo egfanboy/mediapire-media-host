@@ -11,4 +11,5 @@ type MediaApi interface {
 	ScanDirectory(directory string) error
 	ScanDirectories(directories ...string) error
 	StreamMedia(ctx context.Context, fileName string) ([]byte, error)
+	UnsetDirectory(directory string) error
 }
