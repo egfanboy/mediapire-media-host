@@ -8,6 +8,7 @@ require (
 	github.com/egfanboy/mediapire-common v0.0.0-20220905143518-e3d4d7ef0bac
 	github.com/fsnotify/fsnotify v1.5.4
 	github.com/google/go-cmp v0.5.8 // indirect
+	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/hashicorp/consul/api v1.15.3
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect

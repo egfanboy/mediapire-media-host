@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/egfanboy/mediapire-media-host/internal/app"
+	"github.com/google/uuid"
 
 	"github.com/egfanboy/mediapire-common/router"
 )
@@ -49,9 +50,10 @@ func (c mediaController) StreamMedia() router.RouteBuilder {
 		SetPath(basePath + "/stream").
 		SetReturnCode(200).
 		SetDataType(router.DataTypeFile).
-		AddQueryParam(router.QueryParam{Name: "filePath", Required: true}).
+		AddQueryParam(router.QueryParam{Name: "id", Required: true}).
 		SetHandler(func(request *http.Request, p router.RouteParams) (interface{}, error) {
-			return c.service.StreamMedia(request.Context(), p.Params["filePath"])
+			id := p.Params["id"]
+			return c.service.StreamMedia(request.Context(), uuid.MustParse(id))
 		})
 }
 
