@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 
 	"github.com/egfanboy/mediapire-media-host/pkg/types"
+	"github.com/google/uuid"
 )
 
 const (
@@ -18,7 +18,7 @@ const (
 type MediaHostApi interface {
 	GetHealth(h types.Host) (*http.Response, error)
 	GetMedia(h types.Host) ([]types.MediaItem, *http.Response, error)
-	StreamMedia(h types.Host, fileName string) ([]byte, *http.Response, error)
+	StreamMedia(h types.Host, mediaId uuid.UUID) ([]byte, *http.Response, error)
 }
 
 func buildUriFromHost(h types.Host, apiUri string) string {
@@ -51,8 +51,8 @@ func (c *mediaHostClient) GetMedia(h types.Host) (result []types.MediaItem, r *h
 	return
 }
 
-func (c *mediaHostClient) StreamMedia(h types.Host, filePath string) (b []byte, r *http.Response, err error) {
-	r, err = http.Get(buildUriFromHost(h, fmt.Sprintf("%s/stream?filePath=%s", baseMediaPath, url.QueryEscape(filePath))))
+func (c *mediaHostClient) StreamMedia(h types.Host, mediaId uuid.UUID) (b []byte, r *http.Response, err error) {
+	r, err = http.Get(buildUriFromHost(h, fmt.Sprintf("%s/stream?id=%q", baseMediaPath, mediaId)))
 
 	if err != nil {
 		return

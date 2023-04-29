@@ -13,6 +13,7 @@ import (
 	"github.com/egfanboy/mediapire-common/exceptions"
 	"github.com/egfanboy/mediapire-media-host/internal/app"
 	"github.com/egfanboy/mediapire-media-host/pkg/types"
+	"github.com/google/uuid"
 
 	"github.com/rs/zerolog/log"
 )
@@ -26,6 +27,8 @@ var mediaTypeFactory = map[string]mediaFactory{
 }
 
 var mediaCache = map[string][]types.MediaItem{}
+
+var mediaLookup = map[uuid.UUID]string{}
 
 func unwrapCache() (unwrappedItems []types.MediaItem) {
 	for _, items := range mediaCache {
@@ -127,6 +130,7 @@ func (s *mediaService) ScanDirectory(directory string) (err error) {
 					}
 
 					item.Path = path
+					item.Id = uuid.New()
 
 					items = append(items, item)
 				}()
@@ -147,15 +151,18 @@ func (s *mediaService) ScanDirectory(directory string) (err error) {
 	return
 }
 
-func (s *mediaService) StreamMedia(ctx context.Context, filePath string) ([]byte, error) {
-	file, err := os.Open(filePath)
+func (s *mediaService) StreamMedia(ctx context.Context, id uuid.UUID) ([]byte, error) {
+	filePath, err := s.getFilePathFromId(ctx, id)
+	if err != nil {
+		return nil, err
+	}
 
+	file, err := os.Open(filePath)
 	if err != nil && errors.Is(err, os.ErrInvalid) || errors.Is(err, os.ErrNotExist) {
 		return nil, &exceptions.ApiException{Err: err, StatusCode: http.StatusNotFound}
 	}
 
 	fileInfo, err := file.Stat()
-
 	if err != nil {
 		return nil, err
 	}
@@ -163,8 +170,22 @@ func (s *mediaService) StreamMedia(ctx context.Context, filePath string) ([]byte
 	b := make([]byte, fileInfo.Size())
 
 	_, err = file.Read(b)
-
 	return b, err
+}
+
+func (s *mediaService) getFilePathFromId(ctx context.Context, id uuid.UUID) (string, error) {
+	if path, ok := mediaLookup[id]; ok {
+		return path, nil
+	}
+
+	for _, item := range unwrapCache() {
+		if item.Id == id {
+			mediaLookup[id] = item.Path
+			return item.Path, nil
+		}
+	}
+
+	return "", &exceptions.ApiException{Err: fmt.Errorf("no item with id %s", id.String()), StatusCode: http.StatusNotFound}
 }
 
 func (s *mediaService) UnsetDirectory(directory string) error {

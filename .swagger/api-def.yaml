@@ -51,12 +51,13 @@ paths:
       description: Must provide filePath and nodeId
       operationId: streamMedia
       parameters:
-        - name: filePath
+        - name: id
           in: query
-          description: Path of the file to stream
+          description: Id of the item to stream
           required: true
           schema:
             type: string
+            format: uuid
         # - name: nodeId
         #   in: query
         #   description: Id of the node to play the media from
@@ -92,9 +93,9 @@ components:
         extension:
           type: string
           example: txt
-        path:
+        id:
           type: string
-          example: /user/my-user/media/file.txt
+          format: uuid
         metadata:
           type: object
           additionalProperties: true
