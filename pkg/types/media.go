@@ -9,3 +9,5 @@ type MediaItem struct {
 	Id        uuid.UUID   `json:"id"`
 	Metadata  interface{} `json:"metadata"`
 }
+
+type DownloadRequest []uuid.UUID

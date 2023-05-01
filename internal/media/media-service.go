@@ -1,9 +1,12 @@
 package media
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -28,7 +31,7 @@ var mediaTypeFactory = map[string]mediaFactory{
 
 var mediaCache = map[string][]types.MediaItem{}
 
-var mediaLookup = map[uuid.UUID]string{}
+var mediaLookup = map[uuid.UUID]types.MediaItem{}
 
 func unwrapCache() (unwrappedItems []types.MediaItem) {
 	for _, items := range mediaCache {
@@ -174,24 +177,74 @@ func (s *mediaService) StreamMedia(ctx context.Context, id uuid.UUID) ([]byte, e
 }
 
 func (s *mediaService) getFilePathFromId(ctx context.Context, id uuid.UUID) (string, error) {
-	if path, ok := mediaLookup[id]; ok {
-		return path, nil
+	item, err := s.getMediaItemFromId(ctx, id)
+	if err != nil {
+		return "", err
+	}
+
+	return item.Path, nil
+}
+
+func (s *mediaService) getMediaItemFromId(ctx context.Context, id uuid.UUID) (types.MediaItem, error) {
+	if item, ok := mediaLookup[id]; ok {
+		return item, nil
 	}
 
 	for _, item := range unwrapCache() {
 		if item.Id == id {
-			mediaLookup[id] = item.Path
-			return item.Path, nil
+			mediaLookup[id] = item
+			return item, nil
 		}
 	}
 
-	return "", &exceptions.ApiException{Err: fmt.Errorf("no item with id %s", id.String()), StatusCode: http.StatusNotFound}
+	return types.MediaItem{}, &exceptions.ApiException{Err: fmt.Errorf("no item with id %s", id.String()), StatusCode: http.StatusNotFound}
 }
 
 func (s *mediaService) UnsetDirectory(directory string) error {
 	delete(mediaCache, directory)
 
 	return nil
+}
+
+func (s *mediaService) DownloadMedia(ctx context.Context, ids []uuid.UUID) ([]byte, error) {
+	log.Info().Msg("Start: downloading media")
+	buf := new(bytes.Buffer)
+
+	zipWriter := zip.NewWriter(buf)
+
+	for _, itemId := range ids {
+		log.Debug().Msgf("adding item with id %q to archive", itemId)
+		item, err := s.getMediaItemFromId(ctx, itemId)
+		if err != nil {
+			log.Err(err).Msgf("Failed to get item with id %q", itemId)
+			return nil, err
+		}
+
+		file, err := os.Open(item.Path)
+		if err != nil {
+			log.Err(err).Msgf("Failed to open item with id %q", itemId)
+			return nil, err
+		}
+
+		writer, err := zipWriter.Create(fmt.Sprintf("%s.%s", item.Name, item.Extension))
+		if err != nil {
+			log.Err(err)
+			return nil, err
+		}
+
+		if _, err := io.Copy(writer, file); err != nil {
+			log.Err(err).Msgf("Failed to copy file to archive for item with id %q", itemId)
+			return nil, err
+		}
+
+		file.Close()
+	}
+
+	err := zipWriter.Close()
+
+	log.Info().Msg("Finished: downloading media")
+
+	return buf.Bytes(), err
 }
 
 func NewMediaService() MediaApi {

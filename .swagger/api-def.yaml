@@ -48,8 +48,9 @@ paths:
       tags:
         - Media
       summary: Stream selected file
-      description: Must provide filePath and nodeId
+      description: Must provide id for media item
       operationId: streamMedia
+
       parameters:
         - name: id
           in: query
@@ -72,6 +73,40 @@ paths:
                 maxLength: 12345
         "400":
           description: Invalid status value
+  /api/v1/media/download:
+    post:
+      tags:
+        - Media
+      summary: Download selected file(s)
+      description: Returns a compressed archived of the file(s) requested for download from the provided media id(s).
+      operationId: downloadMedia
+      requestBody:
+        description: the item(s) to download.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DownloadRequest"
+      # parameters:
+      # - name: strictDownload
+      #   in: query
+      #   description: Set strict download. If an error occurs when downloading any item the whole API will fail when strict is set to true. If set to false, the API will be treated successfully with a report of which item(s) failed to download.
+      #   required: false
+      #   default: false
+      #   schema:
+      #     type: boolean
+      responses:
+        "200":
+          description: successful operation
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+                maxLength: 12345
+        "400":
+          description: Invalid status value
+
   /api/v1/health:
     get:
       tags:
@@ -100,3 +135,8 @@ components:
           type: object
           additionalProperties: true
           example: { "title": "some-file" }
+    DownloadRequest:
+      type: array
+      items:
+        type: string
+        format: uuid
