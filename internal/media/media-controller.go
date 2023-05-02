@@ -57,10 +57,26 @@ func (c mediaController) StreamMedia() router.RouteBuilder {
 		})
 }
 
+func (c mediaController) DownloadMedia() router.RouteBuilder {
+	return router.NewV1RouteBuilder().
+		SetMethod(http.MethodOptions, http.MethodPost).
+		SetPath(basePath + "/download").
+		SetReturnCode(200).
+		SetDataType(router.DataTypeFile).
+		SetHandler(func(request *http.Request, p router.RouteParams) (interface{}, error) {
+			var body []uuid.UUID
+			err := p.PopulateBody(&body)
+			if err != nil {
+				return nil, err
+			}
+			return c.service.DownloadMedia(request.Context(), body)
+		})
+}
+
 func initController() mediaController {
 	c := mediaController{service: NewMediaService()}
 
-	c.builders = append(c.builders, c.GetMedia, c.StreamMedia)
+	c.builders = append(c.builders, c.GetMedia, c.StreamMedia, c.DownloadMedia)
 
 	return c
 }

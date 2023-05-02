@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -19,6 +20,7 @@ type MediaHostApi interface {
 	GetHealth(h types.Host) (*http.Response, error)
 	GetMedia(h types.Host) ([]types.MediaItem, *http.Response, error)
 	StreamMedia(h types.Host, mediaId uuid.UUID) ([]byte, *http.Response, error)
+	DownloadMedia(h types.Host, ids []uuid.UUID) ([]byte, *http.Response, error)
 }
 
 func buildUriFromHost(h types.Host, apiUri string) string {
@@ -63,6 +65,25 @@ func (c *mediaHostClient) StreamMedia(h types.Host, mediaId uuid.UUID) (b []byte
 	defer r.Body.Close()
 
 	return
+}
+
+func (c *mediaHostClient) DownloadMedia(h types.Host, ids []uuid.UUID) ([]byte, *http.Response, error) {
+	body, err := json.Marshal(ids)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	r, err := http.Post(buildUriFromHost(h, fmt.Sprintf("%s/download", baseMediaPath)), "application/json", bytes.NewBuffer(body))
+
+	if err != nil {
+		return nil, r, err
+	}
+
+	b, err := ioutil.ReadAll(r.Body)
+
+	defer r.Body.Close()
+
+	return b, r, err
 }
 
 func NewClient(ctx context.Context) MediaHostApi {
