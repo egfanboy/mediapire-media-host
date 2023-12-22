@@ -3,9 +3,19 @@ package app
 import (
 	"flag"
 	"os"
+	"path"
 
 	"gopkg.in/yaml.v3"
 )
+
+func getDownloadPath() (string, error) {
+	basePath, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+
+	return path.Join(basePath, ".mediapire", "mediahost", "downloads"), nil
+}
 
 type SelfCfg struct {
 	Scheme string `yaml:"scheme"`
@@ -22,7 +32,14 @@ type config struct {
 	Directories []string  `yaml:"directories"`
 	FileTypes   []string  `yaml:"fileTypes"`
 	Consul      consulCfg `yaml:"consul"`
-	SelfCfg     `yaml:"mediaHost"`
+	Rabbit      struct {
+		Username string `yaml:"username"`
+		Password string `yaml:"password"`
+		Port     int    `yaml:"port"`
+		Address  string `yaml:"address"`
+	} `yaml:"rabbit"`
+	SelfCfg      `yaml:"mediaHost"`
+	DownloadPath string `yaml:"-"`
 }
 
 func readConfig() (s config, err error) {
@@ -48,6 +65,16 @@ func readConfig() (s config, err error) {
 	}
 
 	err = yaml.Unmarshal(f, &s)
+	if err != nil {
+		return
+	}
+
+	dlPath, err := getDownloadPath()
+	if err != nil {
+		return
+	}
+
+	s.DownloadPath = dlPath
 
 	return
 }

@@ -1,15 +1,18 @@
 package app
 
 import (
+	"os"
 	"sync"
 
 	"github.com/egfanboy/mediapire-common/router"
+	"github.com/google/uuid"
 )
 
 type App struct {
 	ControllerRegistry *router.ControllerRegistry
 
 	config
+	NodeId uuid.UUID
 }
 
 func (a *App) IsMediaSupported(extension string) bool {
@@ -31,23 +34,31 @@ var a *App
 
 var o = sync.Once{}
 
-func initApp() error {
-	o.Do(func() {
-		if a == nil {
-			config, err := readConfig()
+func initApp() {
+	if a == nil {
+		config, err := readConfig()
 
-			if err != nil {
-				return
-			}
-			a = &App{ControllerRegistry: router.NewControllerRegistry(), config: config}
+		if err != nil {
+			return
 		}
-	})
+		a = &App{ControllerRegistry: router.NewControllerRegistry(), config: config}
+	}
+
+	// Create the download path from the config in case it does not exist
+	err := os.MkdirAll(a.config.DownloadPath, os.ModePerm)
+	if err != nil {
+		return
+	}
+}
+
+func createApp() error {
+	o.Do(initApp)
 
 	return nil
 }
 
 func GetApp() *App {
-	initApp()
+	createApp()
 
 	return a
 }

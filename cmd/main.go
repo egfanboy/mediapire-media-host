@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -12,7 +13,8 @@ import (
 	"github.com/egfanboy/mediapire-media-host/internal/fs"
 	_ "github.com/egfanboy/mediapire-media-host/internal/health"
 	"github.com/egfanboy/mediapire-media-host/internal/media"
-
+	"github.com/egfanboy/mediapire-media-host/internal/rabbitmq"
+	_ "github.com/egfanboy/mediapire-media-host/internal/transfers"
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -43,6 +45,15 @@ func initiliazeApp() {
 		}
 	}()
 
+	ctx := context.Background()
+
+	err := rabbitmq.Setup(ctx)
+	if err != nil {
+		log.Error().Err(err).Msgf("Failed to connect to rabbitmq")
+		os.Exit(1)
+	}
+
+	addCleanupFunc(func() { rabbitmq.Cleanup() })
 	fsService, _ := fs.NewFsService()
 	mediaHost := app.GetApp()
 
@@ -60,8 +71,7 @@ func initiliazeApp() {
 	log.Debug().Msg("Scanning media")
 	mediaService := media.NewMediaService()
 
-	err := mediaService.ScanDirectories(mediaHost.Directories...)
-
+	err = mediaService.ScanDirectories(mediaHost.Directories...)
 	if err != nil {
 		log.Error().Err(err)
 	}
