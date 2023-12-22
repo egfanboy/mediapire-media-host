@@ -16,6 +16,6 @@ func (s *healthService) GetHealth(ctx context.Context) (err error) {
 	return nil
 }
 
-func newNodeService() healthApi {
+func newHealthService() healthApi {
 	return &healthService{}
 }

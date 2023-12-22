@@ -1,11 +1,10 @@
 package api
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/egfanboy/mediapire-media-host/pkg/types"
@@ -13,14 +12,15 @@ import (
 )
 
 const (
-	baseMediaPath = "/api/v1/media"
+	baseMediaPath     = "/api/v1/media"
+	baseTransfersPath = "/api/v1/transfers"
 )
 
 type MediaHostApi interface {
 	GetHealth(h types.Host) (*http.Response, error)
 	GetMedia(h types.Host) ([]types.MediaItem, *http.Response, error)
 	StreamMedia(h types.Host, mediaId uuid.UUID) ([]byte, *http.Response, error)
-	DownloadMedia(h types.Host, ids []uuid.UUID) ([]byte, *http.Response, error)
+	DownloadTransfer(h types.Host, transferId string) ([]byte, *http.Response, error)
 }
 
 func buildUriFromHost(h types.Host, apiUri string) string {
@@ -42,7 +42,7 @@ func (c *mediaHostClient) GetMedia(h types.Host) (result []types.MediaItem, r *h
 		return
 	}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil {
 		return
@@ -55,31 +55,28 @@ func (c *mediaHostClient) GetMedia(h types.Host) (result []types.MediaItem, r *h
 
 func (c *mediaHostClient) StreamMedia(h types.Host, mediaId uuid.UUID) (b []byte, r *http.Response, err error) {
 	r, err = http.Get(buildUriFromHost(h, fmt.Sprintf("%s/stream?id=%q", baseMediaPath, mediaId)))
-
 	if err != nil {
 		return
 	}
 
-	b, err = ioutil.ReadAll(r.Body)
+	b, err = io.ReadAll(r.Body)
 
 	defer r.Body.Close()
 
 	return
 }
 
-func (c *mediaHostClient) DownloadMedia(h types.Host, ids []uuid.UUID) ([]byte, *http.Response, error) {
-	body, err := json.Marshal(ids)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	r, err := http.Post(buildUriFromHost(h, fmt.Sprintf("%s/download", baseMediaPath)), "application/json", bytes.NewBuffer(body))
-
+func (c *mediaHostClient) DownloadTransfer(h types.Host, transferId string) ([]byte, *http.Response, error) {
+	r, err := http.Get(buildUriFromHost(h, fmt.Sprintf("%s/%s/download", baseTransfersPath, transferId)))
 	if err != nil {
 		return nil, r, err
 	}
 
-	b, err := ioutil.ReadAll(r.Body)
+	if r.StatusCode >= 300 {
+		return nil, r, fmt.Errorf("request failed with status %d", r.StatusCode)
+	}
+
+	b, err := io.ReadAll(r.Body)
 
 	defer r.Body.Close()
 

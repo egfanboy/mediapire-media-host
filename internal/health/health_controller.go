@@ -36,7 +36,7 @@ func (c healthController) HandleRegister() router.RouteBuilder {
 }
 
 func initController() healthController {
-	c := healthController{service: newNodeService()}
+	c := healthController{service: newHealthService()}
 
 	c.builders = append(c.builders, c.HandleRegister)
 
