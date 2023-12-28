@@ -3,7 +3,9 @@ package fs
 import (
 	"os"
 	"path/filepath"
+	"time"
 
+	"github.com/bep/debounce"
 	"github.com/egfanboy/mediapire-media-host/internal/media"
 
 	"github.com/fsnotify/fsnotify"
@@ -35,6 +37,8 @@ func (s *fsService) WatchDirectory(directory string) error {
 	}
 
 	go func() {
+		debouncer := debounce.New(time.Millisecond * 500)
+
 		for {
 			select {
 			case event, ok := <-watcher.Events:
@@ -42,7 +46,10 @@ func (s *fsService) WatchDirectory(directory string) error {
 					return
 				}
 
-				err := s.handleWatcherEvent(event, directory, watcher)
+				var err error
+				debouncer(func() {
+					err = s.handleWatcherEvent(event, directory, watcher)
+				})
 				if err != nil {
 					log.Error().Err(err).Msgf("Failed to handle change for directory: %s", directory)
 				}

@@ -4,6 +4,7 @@ go 1.16
 
 require (
 	github.com/armon/go-metrics v0.4.1 // indirect
+	github.com/bep/debounce v1.2.1
 	github.com/dhowden/tag v0.0.0-20220618230019-adf36e896086
 	github.com/egfanboy/mediapire-common v0.0.0-20231219000342-fbb6228cf11c
 	github.com/fsnotify/fsnotify v1.5.4
