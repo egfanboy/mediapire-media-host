@@ -37,7 +37,7 @@ func (s *fsService) WatchDirectory(directory string) error {
 	}
 
 	go func() {
-		debouncer := debounce.New(time.Millisecond * 3000)
+		debouncer := debounce.New(time.Millisecond * 500)
 
 		for {
 			select {
