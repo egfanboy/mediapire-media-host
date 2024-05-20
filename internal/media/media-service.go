@@ -212,28 +212,49 @@ func (s *mediaService) DownloadMedia(ctx context.Context, ids []uuid.UUID) ([]by
 
 	zipWriter := zip.NewWriter(buf)
 
+	items := make([]types.MediaItem, len(ids))
+
 	for _, itemId := range ids {
-		log.Debug().Msgf("adding item with id %q to archive", itemId)
 		item, err := s.getMediaItemFromId(ctx, itemId)
 		if err != nil {
 			log.Err(err).Msgf("Failed to get item with id %q", itemId)
 			return nil, err
 		}
 
+		items = append(items, item)
+	}
+
+	groupingFuncs := getGroupingFactories(s.app.FileTypes...)
+
+	for _, fn := range groupingFuncs {
+		items = fn(items)
+	}
+
+	for _, item := range items {
+		log.Debug().Msgf("adding item with id %q to archive", item.Id)
+
 		file, err := os.Open(item.Path)
 		if err != nil {
-			log.Err(err).Msgf("Failed to open item with id %q", itemId)
+			log.Err(err).Msgf("Failed to open item with id %q", item.Id)
 			return nil, err
 		}
 
-		writer, err := zipWriter.Create(fmt.Sprintf("%s.%s", item.Name, item.Extension))
+		itemPath := fmt.Sprintf("%s.%s", item.Name, item.Extension)
+
+		// if the item we are handling is an MP3 file, save it as Album/song.mp3
+		if metatada, ok := item.Metadata.(Mp3Metadata); ok {
+			log.Debug().Msgf("item with id %q is an mp3 file, save it under an folder for the album", item.Id)
+			itemPath = fmt.Sprintf("%s/%s.%s", metatada.Album, item.Name, item.Extension)
+		}
+
+		writer, err := zipWriter.Create(itemPath)
 		if err != nil {
 			log.Err(err)
 			return nil, err
 		}
 
 		if _, err := io.Copy(writer, file); err != nil {
-			log.Err(err).Msgf("Failed to copy file to archive for item with id %q", itemId)
+			log.Err(err).Msgf("Failed to copy file to archive for item with id %q", item.Id)
 			return nil, err
 		}
 
