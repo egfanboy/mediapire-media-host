@@ -6,7 +6,7 @@ require (
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/bep/debounce v1.2.1
 	github.com/dhowden/tag v0.0.0-20220618230019-adf36e896086
-	github.com/egfanboy/mediapire-common v0.0.0-20231219000342-fbb6228cf11c
+	github.com/egfanboy/mediapire-common v0.0.0-20240522004433-cbd1b5041bc7
 	github.com/fsnotify/fsnotify v1.5.4
 	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/google/uuid v1.4.0

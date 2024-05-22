@@ -134,6 +134,7 @@ func (s *mediaService) ScanDirectory(directory string) (err error) {
 
 					item.Path = path
 					item.Id = uuid.New()
+					item.ParentDir = directory
 
 					items = append(items, item)
 				}()
@@ -266,6 +267,60 @@ func (s *mediaService) DownloadMedia(ctx context.Context, ids []uuid.UUID) ([]by
 	log.Info().Msg("Finished: downloading media")
 
 	return buf.Bytes(), err
+}
+
+func (s *mediaService) DeleteMedia(ctx context.Context, ids []uuid.UUID) error {
+	failedToDelete := make([]string, 0)
+
+	for _, itemId := range ids {
+		item, err := s.getMediaItemFromId(ctx, itemId)
+		if err != nil {
+			failedToDelete = append(failedToDelete, fmt.Sprintf("Failed to get item with id %q", itemId))
+
+			continue
+		}
+
+		err = os.Remove(item.Path)
+		if err != nil {
+			failedToDelete = append(failedToDelete, fmt.Sprintf("Failed to delete item with id %q: %s", itemId, err.Error()))
+		}
+
+		err = s.removeItemFromCache(item)
+		if err != nil {
+			log.Err(err).Msg("Failed to remove item from the cache")
+		}
+
+	}
+
+	if len(failedToDelete) > 0 {
+		return fmt.Errorf("encountered the following errors during delete: %s", strings.Join(failedToDelete, "\n"))
+	}
+
+	return nil
+}
+
+func (s *mediaService) removeItemFromCache(item types.MediaItem) error {
+	log.Info().Msgf("Removing item with id %q from the media cache", item.Id)
+
+	// remove the item from the lookup
+	delete(mediaLookup, item.Id)
+
+	if _, ok := mediaCache[item.ParentDir]; !ok {
+		return fmt.Errorf("parent dir for item %q is not in the cache", item.Id)
+	}
+
+	newCache := make([]types.MediaItem, len(mediaCache))
+
+	for _, cachedItem := range mediaCache[item.ParentDir] {
+		// different item, add it to the new cache
+		if cachedItem.Id != item.Id {
+			newCache = append(newCache, cachedItem)
+		}
+	}
+
+	mediaCache[item.ParentDir] = newCache
+
+	return nil
 }
 
 func NewMediaService() MediaApi {

@@ -8,6 +8,8 @@ type MediaItem struct {
 	Path      string      `json:"-"`
 	Id        uuid.UUID   `json:"id"`
 	Metadata  interface{} `json:"metadata"`
+	// Top level directory this item belongs to
+	ParentDir string `json:"-"`
 }
 
 type DownloadRequest []uuid.UUID
