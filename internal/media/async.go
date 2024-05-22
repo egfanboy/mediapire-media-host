@@ -95,6 +95,41 @@ func handleTransferMessage(ctx context.Context, msg amqp091.Delivery) error {
 	return nil
 }
 
+func handleDeleteMessage(ctx context.Context, msg amqp091.Delivery) error {
+	var deleteMsg messaging.DeleteMediaMessage
+
+	// acknowledge the message
+	msg.Ack(false)
+
+	err := json.Unmarshal(msg.Body, &deleteMsg)
+	if err != nil {
+		msg := "failed to unmarshal delete message"
+		log.Err(err).Msg(msg)
+
+		return err
+	}
+
+	appInstance := app.GetApp()
+
+	// Get the media for this node
+	input, ok := deleteMsg.MediaToDelete[appInstance.NodeId]
+	if !ok {
+		log.Info().Msg("Delete request has no inputs from this host")
+
+		return nil
+	}
+
+	mediaService := NewMediaService()
+
+	err = mediaService.DeleteMedia(ctx, input)
+	if err != nil {
+		log.Err(err).Msg("Failed to delete all requested media")
+	}
+
+	return err
+}
+
 func init() {
 	rabbitmq.RegisterConsumer(handleTransferMessage, messaging.TopicTransfer)
+	rabbitmq.RegisterConsumer(handleDeleteMessage, messaging.TopicDeleteMedia)
 }
