@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -319,6 +320,17 @@ func (s *mediaService) removeItemFromCache(item types.MediaItem) error {
 	}
 
 	mediaCache[item.ParentDir] = newCache
+
+	return nil
+}
+
+func (s *mediaService) CleanupDownloadContent(ctx context.Context, transferId string) error {
+	log.Info().Msgf("Deleting content for transfer with id %s", transferId)
+
+	err := os.RemoveAll(path.Join(s.app.DownloadPath, transferId+".zip"))
+	if err != nil {
+		log.Err(err).Msgf("Failed to delete content for transfer with id %s", transferId)
+	}
 
 	return nil
 }

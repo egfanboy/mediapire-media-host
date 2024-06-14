@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path"
+	"time"
 
 	"github.com/egfanboy/mediapire-common/messaging"
 	"github.com/egfanboy/mediapire-media-host/internal/app"
@@ -90,6 +91,12 @@ func handleTransferMessage(ctx context.Context, msg amqp091.Delivery) error {
 		sendTransferUpdateMessage(ctx, tMsg.Id, &msg)
 		return err
 	}
+
+	// Set a timer that will cleanup the content in 24 hours
+	// TODO: use the actual expiry of the transfer
+	time.AfterFunc(time.Hour*24, func() {
+		mediaService.CleanupDownloadContent(ctx, tMsg.Id)
+	})
 
 	sendTransferUpdateMessage(ctx, tMsg.Id, nil)
 	return nil
