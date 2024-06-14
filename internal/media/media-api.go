@@ -15,4 +15,5 @@ type MediaApi interface {
 	UnsetDirectory(directory string) error
 	DownloadMedia(ctx context.Context, ids []uuid.UUID) ([]byte, error)
 	DeleteMedia(ctx context.Context, ids []uuid.UUID) error
+	CleanupDownloadContent(ctx context.Context, transferId string) error
 }
