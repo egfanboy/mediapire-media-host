@@ -47,3 +47,9 @@ On startup, the media host will scan the media based on the provided file extens
 ### Directory Scanning
 
 The mediapire media host will scan the files in the configured directories and only track the files of the configured file types. Filesystem watchers will then be created that will rescan the media in the directories once the media in any of the directories is changed (Create, update, delete).
+
+### Running in docker
+
+```
+docker run -d --name mediapire-media-host -p 9797:9797 -v /PATH_TO_CONFIG/config.yaml:/mediapire-media-host/config.yaml -v /PATH_TO_MEDIA:/media ericturf:mediapire-media-host
+```

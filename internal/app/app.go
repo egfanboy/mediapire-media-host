@@ -6,6 +6,8 @@ import (
 
 	"github.com/egfanboy/mediapire-common/router"
 	"github.com/google/uuid"
+
+	"github.com/rs/zerolog/log"
 )
 
 type App struct {
@@ -39,6 +41,8 @@ func initApp() {
 		config, err := readConfig()
 
 		if err != nil {
+			log.Error().Err(err).Msg("Error occured when trying to instantiate the application. Exiting.")
+			os.Exit(1)
 			return
 		}
 		a = &App{ControllerRegistry: router.NewControllerRegistry(), config: config}
@@ -64,6 +68,5 @@ func GetApp() *App {
 }
 
 func init() {
-	// todo: handle error
 	initApp()
 }
