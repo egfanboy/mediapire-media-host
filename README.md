@@ -50,6 +50,27 @@ The mediapire media host will scan the files in the configured directories and o
 
 ### Running in docker
 
+If you are running the mediahost on the same cluster where consul is running you can run the container as follows:
+
 ```
-docker run -d --name mediapire-media-host -p 9797:9797 -v /PATH_TO_CONFIG/config.yaml:/mediapire-media-host/config.yaml -v /PATH_TO_MEDIA:/media ericturf:mediapire-media-host
+docker run -d --name mediapire-media-host -v /PATH_TO_CONFIG/config.yaml:/mediapire-media-host/config.yaml -v /PATH_TO_MEDIA:/media ericturf/mediapire-media-host:latest
+```
+
+If you are running the container on a host that is not the same as consul you will need to provide the address of your host and expose the port for consul to be health to conduct health checks.
+
+In the config you are using to create the container add the `address` field to `mediaHost` where address is the reachable address of your current host.
+
+```yaml
+mediaHost:
+  scheme: http
+  # port of the media host (self) instance
+  port: 444
+  # Optional, if running in a container and consul is on another host need to provide address to reach the service within the container
+  address: "10.0.0.190"
+```
+
+Then create the container exposing the port you set in your config.
+
+```
+docker run -d --name mediapire-media-host -p 444:444 -v /PATH_TO_CONFIG/config.yaml:/mediapire-media-host/config.yaml -v /PATH_TO_MEDIA:/media ericturf/mediapire-media-host:latest
 ```

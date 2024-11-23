@@ -18,8 +18,9 @@ func getDownloadPath() (string, error) {
 }
 
 type SelfCfg struct {
-	Scheme string `yaml:"scheme"`
-	Port   int    `yaml:"port"`
+	Scheme  string  `yaml:"scheme"`
+	Port    int     `yaml:"port"`
+	Address *string `yaml:"address"`
 }
 
 type consulCfg struct {
