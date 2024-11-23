@@ -88,15 +88,23 @@ func findServiceForHost(host string, port int) (*api.AgentService, error) {
 }
 
 func RegisterService() error {
-	trafficIp, err := findTrafficIp()
-	if err != nil {
-		return err
+	appInstance := app.GetApp()
+
+	selfIp := ""
+
+	if appInstance.SelfCfg.Address != nil {
+		selfIp = *appInstance.SelfCfg.Address
+	} else {
+		trafficIp, err := findTrafficIp()
+		if err != nil {
+			return err
+		}
+		selfIp = trafficIp.String()
 	}
 
-	appInstance := app.GetApp()
 	self := appInstance.SelfCfg
 
-	service, err := findServiceForHost(trafficIp.String(), self.Port)
+	service, err := findServiceForHost(selfIp, self.Port)
 	if err != nil {
 		return err
 	}
@@ -116,15 +124,15 @@ func RegisterService() error {
 		ID:      nodeId.String(),
 		Name:    "media-host-node",
 		Port:    self.Port,
-		Address: trafficIp.String(),
+		Address: selfIp,
 		Check: &api.AgentServiceCheck{
-			HTTP:     fmt.Sprintf("%s://%s:%v/api/v1/health", self.Scheme, trafficIp, self.Port),
+			HTTP:     fmt.Sprintf("%s://%s:%v/api/v1/health", self.Scheme, selfIp, self.Port),
 			Interval: "10s",
 			Timeout:  "30s",
 		},
 		Meta: map[string]string{
 			"scheme": self.Scheme,
-			"host":   trafficIp.String(),
+			"host":   selfIp,
 			"port":   strconv.Itoa(self.Port),
 		},
 	}
