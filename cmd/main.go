@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/egfanboy/mediapire-media-host/internal/app"
@@ -36,9 +37,8 @@ func initiliazeApp() {
 	log.Info().Msg("Initializing app")
 
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
+	signal.Notify(c, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	defer func() {
-		signal.Stop(c)
 		log.Info().Msg("Running cleanup functions")
 		for _, fn := range cleanupFuncs {
 			fn()
