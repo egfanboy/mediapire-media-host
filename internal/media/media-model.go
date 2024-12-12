@@ -5,13 +5,13 @@ import (
 )
 
 type Mp3Metadata struct {
-	Artist     string
-	Title      string
-	Album      string
-	Genre      string
-	TrackIndex int
-	TrackOf    int
-	Length     float64
+	Artist     string  `json:"artist"`
+	Title      string  `json:"title"`
+	Album      string  `json:"album"`
+	Genre      string  `json:"genre"`
+	TrackIndex int     `json:"trackIndex"`
+	TrackOf    int     `json:"trackOf"`
+	Length     float64 `json:"length"`
 }
 
 func mp3MetadataFromTag(m tag.Metadata) Mp3Metadata {
