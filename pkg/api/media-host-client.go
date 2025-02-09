@@ -14,6 +14,7 @@ import (
 const (
 	baseMediaPath     = "/api/v1/media"
 	baseTransfersPath = "/api/v1/transfers"
+	baseSettingsPath  = "/api/v1/settings"
 )
 
 type MediaHostApi interface {
@@ -21,6 +22,7 @@ type MediaHostApi interface {
 	GetMedia(h types.Host) ([]types.MediaItem, *http.Response, error)
 	StreamMedia(h types.Host, mediaId uuid.UUID) ([]byte, *http.Response, error)
 	DownloadTransfer(h types.Host, transferId string) ([]byte, *http.Response, error)
+	GetSettings(h types.Host) (types.MediaHostSettings, *http.Response, error)
 }
 
 func buildUriFromHost(h types.Host, apiUri string) string {
@@ -31,12 +33,10 @@ func buildUriFromHost(h types.Host, apiUri string) string {
 type mediaHostClient struct{}
 
 func (c *mediaHostClient) GetHealth(h types.Host) (*http.Response, error) {
-
 	return http.Get(buildUriFromHost(h, "/api/v1/health"))
 }
 
 func (c *mediaHostClient) GetMedia(h types.Host) (result []types.MediaItem, r *http.Response, err error) {
-
 	r, err = http.Get(buildUriFromHost(h, baseMediaPath))
 	if err != nil {
 		return
@@ -81,6 +81,23 @@ func (c *mediaHostClient) DownloadTransfer(h types.Host, transferId string) ([]b
 	defer r.Body.Close()
 
 	return b, r, err
+}
+
+func (c *mediaHostClient) GetSettings(h types.Host) (result types.MediaHostSettings, r *http.Response, err error) {
+	r, err = http.Get(buildUriFromHost(h, baseSettingsPath))
+	if err != nil {
+		return
+	}
+
+	body, err := io.ReadAll(r.Body)
+	defer r.Body.Close()
+	if err != nil {
+		return
+	}
+
+	err = json.Unmarshal(body, &result)
+
+	return
 }
 
 func NewClient(ctx context.Context) MediaHostApi {

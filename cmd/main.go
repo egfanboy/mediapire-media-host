@@ -12,10 +12,17 @@ import (
 	"github.com/egfanboy/mediapire-media-host/internal/app"
 	"github.com/egfanboy/mediapire-media-host/internal/consul"
 	"github.com/egfanboy/mediapire-media-host/internal/fs"
-	_ "github.com/egfanboy/mediapire-media-host/internal/health"
 	"github.com/egfanboy/mediapire-media-host/internal/media"
 	"github.com/egfanboy/mediapire-media-host/internal/rabbitmq"
+
+	// APIs - start
+
+	_ "github.com/egfanboy/mediapire-media-host/internal/health"
+	_ "github.com/egfanboy/mediapire-media-host/internal/settings"
 	_ "github.com/egfanboy/mediapire-media-host/internal/transfers"
+
+	// APIs - end
+
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
