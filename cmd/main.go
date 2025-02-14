@@ -45,6 +45,7 @@ func initiliazeApp() {
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
 	defer func() {
 		log.Info().Msg("Running cleanup functions")
 		for _, fn := range cleanupFuncs {
@@ -78,12 +79,13 @@ func initiliazeApp() {
 	log.Debug().Msg("Scanning media")
 	mediaService := media.NewMediaService()
 
+	t := time.Now()
 	err = mediaService.ScanDirectories(mediaHost.Directories...)
 	if err != nil {
 		log.Error().Err(err)
 	}
 
-	log.Debug().Msg("Finished scanning media")
+	log.Debug().Msgf("Finished scanning media in %s", time.Since(t))
 
 	log.Debug().Msg("Starting webserver")
 	mainRouter := mux.NewRouter()
