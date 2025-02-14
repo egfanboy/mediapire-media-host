@@ -4,6 +4,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/egfanboy/mediapire-media-host/pkg/types"
@@ -12,12 +13,10 @@ import (
 	"github.com/tcolgate/mp3"
 )
 
-type mediaFactory func(path string, ext string, info os.FileInfo) (item types.MediaItem, err error)
+type mediaFactory func(path string, ext string) (item types.MediaItem, err error)
 
-func mp3Factory(path string, ext string, info os.FileInfo) (item types.MediaItem, err error) {
-
+func mp3Factory(path string, ext string) (item types.MediaItem, err error) {
 	f, err := os.OpenFile(path, 0, fs.FileMode(os.O_RDONLY))
-
 	if err != nil {
 		return
 	}
@@ -25,12 +24,11 @@ func mp3Factory(path string, ext string, info os.FileInfo) (item types.MediaItem
 	s := io.ReadSeeker(f)
 
 	m, err := tag.ReadFrom(s)
-
 	if err != nil {
 		return
 	}
 
-	item.Name = strings.Replace(info.Name(), "."+ext, "", 1)
+	item.Name = strings.Replace(filepath.Base(path), "."+ext, "", 1)
 	item.Extension = ext
 	metadata := mp3MetadataFromTag(m)
 
@@ -41,7 +39,6 @@ func mp3Factory(path string, ext string, info os.FileInfo) (item types.MediaItem
 
 	for {
 		errD := d.Decode(&frame, &skipped)
-
 		if errD != nil {
 			if errD == io.EOF {
 				break

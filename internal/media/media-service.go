@@ -11,11 +11,13 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 
 	"github.com/egfanboy/mediapire-common/exceptions"
 	"github.com/egfanboy/mediapire-media-host/internal/app"
+	"github.com/egfanboy/mediapire-media-host/internal/utils"
 	"github.com/egfanboy/mediapire-media-host/pkg/types"
 	"github.com/google/uuid"
 
@@ -101,57 +103,103 @@ func (s *mediaService) ScanDirectories(directories ...string) (err error) {
 	return
 }
 
-func (s *mediaService) ScanDirectory(directory string) (err error) {
-	items := make([]types.MediaItem, 0)
+func (s *mediaService) scanDirectory(directory string, wg *sync.WaitGroup, wp utils.WorkerPool, items chan<- types.MediaItem) error {
+	defer wg.Done()
 
-	wg := sync.WaitGroup{}
+	visit := func(path string, info os.FileInfo, err error) error {
+		if err != nil && err != os.ErrNotExist {
+			return err
+		}
 
-	err = filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			log.Warn().Err(err).Msgf("Error occured when walking %s, skipping.", path)
+		// ignore itself to avoid infinite loop
+		if info.Mode().IsDir() && path != directory {
+			wg.Add(1)
+			go s.scanDirectory(path, wg, wp, items)
+			// this will skip this directory since we spawn a goroutine to handle it
 			return filepath.SkipDir
 		}
 
-		ext := filepath.Ext(path)
-
-		// filepath.Ext returns . before file type, strip it away
-		if strings.HasPrefix(ext, ".") {
-			ext = strings.ReplaceAll(ext, ".", "")
-		}
-
-		if s.app.IsMediaSupported(ext) {
-			if factory, ok := mediaTypeFactory[ext]; ok {
-				wg.Add(1)
-
-				go func() {
-					defer wg.Done()
-
-					item, err := factory(path, ext, info)
-
-					if err != nil {
-						log.Error().Err(err).Str("file", info.Name())
-						return
-					}
-
-					item.Path = path
-					item.Id = uuid.New()
-					item.ParentDir = directory
-
-					items = append(items, item)
-				}()
-
-			} else {
-				log.Warn().Msgf("No factory for supported media type %s, cannot parse file.", ext)
-			}
+		if info.Mode().IsRegular() && info.Size() > 0 {
+			wg.Add(1)
+			go s.processFile(path, wg, wp, items)
 		}
 
 		return nil
-	})
+	}
+
+	wp.Work()
+
+	defer wp.Done()
+
+	return filepath.Walk(directory, visit)
+}
+
+func (s *mediaService) processFile(path string, wg *sync.WaitGroup, wp utils.WorkerPool, items chan<- types.MediaItem) {
+	defer wg.Done()
+
+	ext := filepath.Ext(path)
+
+	// filepath.Ext returns . before file type, strip it away
+	if strings.HasPrefix(ext, ".") {
+		ext = strings.ReplaceAll(ext, ".", "")
+	}
+
+	if !s.app.IsMediaSupported(ext) {
+		return
+	}
+
+	if factory, ok := mediaTypeFactory[ext]; !ok {
+		return
+	} else {
+		wp.Work()
+		defer wp.Done()
+
+		item, err := factory(path, ext)
+		if err != nil {
+			log.Error().Err(err).Str("file", path)
+			return
+		}
+
+		item.Path = path
+		item.Id = uuid.New()
+		item.ParentDir = filepath.Dir(path)
+
+		items <- item
+	}
+}
+
+func (s *mediaService) processItems(items <-chan types.MediaItem, result chan<- []types.MediaItem) {
+	mediaItems := make([]types.MediaItem, 0)
+
+	for item := range items {
+		mediaItems = append(mediaItems, item)
+	}
+
+	result <- mediaItems
+}
+
+func (s *mediaService) ScanDirectory(directory string) (err error) {
+	workers := 2 * runtime.GOMAXPROCS(0)
+
+	wp := utils.NewWorkerPool(workers)
+	items := make(chan types.MediaItem)
+	result := make(chan []types.MediaItem)
+
+	wg := new(sync.WaitGroup)
+
+	go s.processItems(items, result)
+
+	wg.Add(1)
+
+	// will walk through directories and spawn goroutines to handle subdirectories and files
+	s.scanDirectory(directory, wg, wp, items)
 
 	wg.Wait()
 
-	// Add to cache
-	mediaCache[directory] = items
+	// Close items channel since all files have been processed at this point
+	close(items)
+
+	mediaCache[directory] = <-result
 
 	return
 }
