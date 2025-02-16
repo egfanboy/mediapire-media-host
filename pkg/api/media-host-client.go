@@ -23,6 +23,7 @@ type MediaHostApi interface {
 	StreamMedia(ctx context.Context, mediaId uuid.UUID) ([]byte, *http.Response, error)
 	DownloadTransfer(ctx context.Context, transferId string) ([]byte, *http.Response, error)
 	GetSettings(ctx context.Context) (types.MediaHostSettings, *http.Response, error)
+	GetMediaArt(ctx context.Context, mediaId uuid.UUID) ([]byte, *http.Response, error)
 }
 
 func buildUriFromHost(h types.Host, apiUri string) string {
@@ -121,6 +122,28 @@ func (c *mediaHostClient) GetSettings(ctx context.Context) (result types.MediaHo
 	err = json.Unmarshal(body, &result)
 
 	return
+}
+
+func (c *mediaHostClient) GetMediaArt(ctx context.Context, mediaId uuid.UUID) ([]byte, *http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, buildUriFromHost(c.host, fmt.Sprintf("%s/%s/art", baseMediaPath, mediaId.String())), nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	r, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, r, err
+	}
+
+	if r.StatusCode >= 300 {
+		return nil, r, fmt.Errorf("request failed with status %d", r.StatusCode)
+	}
+
+	b, err := io.ReadAll(r.Body)
+
+	defer r.Body.Close()
+
+	return b, r, err
 }
 
 func NewClient(h types.Host) MediaHostApi {

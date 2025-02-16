@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"path"
@@ -162,6 +163,11 @@ func (s *mediaService) processItems(items <-chan types.MediaItem, result chan<- 
 	mediaItems := make([]types.MediaItem, 0)
 
 	for item := range items {
+		// TODO: Make this dynamic for extension type
+		if item.Extension == "mp3" {
+			mp3ItemChan <- item
+		}
+
 		mediaItems = append(mediaItems, item)
 	}
 
@@ -371,6 +377,58 @@ func (s *mediaService) CleanupDownloadContent(ctx context.Context, transferId st
 	}
 
 	return nil
+}
+
+func (s *mediaService) GetMediaArt(ctx context.Context, id uuid.UUID) ([]byte, error) {
+	item, err := s.getMediaItemFromId(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if item.Extension != "mp3" {
+		return nil, &exceptions.ApiException{
+			StatusCode: http.StatusBadRequest,
+			Err:        fmt.Errorf("media art is not supported for media of type %s", item.Extension),
+		}
+	}
+
+	// Assume only mp3 works from this point on, refactor for other types in the future
+	artPath, err := getArtPathForMp3Item(item)
+	if err != nil {
+		return nil, err
+	}
+
+	artFile, err := os.OpenFile(artPath, 0, fs.FileMode(os.O_RDONLY))
+	if err != nil {
+		if os.IsNotExist(err) {
+			log.Debug().Msgf("art for item %q not saved on disk, reading file to get album art", item.Id)
+
+			art, err := getArtForMp3Item(item)
+			if err != nil {
+				errMsg := fmt.Sprintf("failed to open file for media item %q", item.Id)
+				log.Err(err).Msg(errMsg)
+				return nil, errors.New(errMsg)
+			}
+			// Send to channel so it can be processed and cached for the next run
+			mp3ItemChan <- item
+
+			return art, nil
+		}
+
+		// all other errors
+		return nil, err
+	}
+
+	defer artFile.Close()
+
+	buf := new(bytes.Buffer)
+
+	_, err = io.Copy(buf, artFile)
+	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
 }
 
 func NewMediaService() MediaApi {
