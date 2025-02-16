@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/egfanboy/mediapire-media-host/pkg/types"
+	"github.com/google/uuid"
 
 	"github.com/dhowden/tag"
 	"github.com/tcolgate/mp3"
@@ -15,7 +16,34 @@ import (
 
 type mediaFactory func(path string, ext string) (item types.MediaItem, err error)
 
+var mediaTypeFactory = map[string]mediaFactory{
+	"mp3": mp3Factory,
+}
+
+func getFactory(ext string) mediaFactory {
+	if factory, ok := mediaTypeFactory[ext]; !ok {
+		return baseFactory
+	} else {
+		return factory
+	}
+}
+
+func baseFactory(path, ext string) (item types.MediaItem, err error) {
+	item.Path = path
+	item.Extension = ext
+	item.ParentDir = filepath.Dir(path)
+	item.Name = strings.Replace(filepath.Base(path), "."+ext, "", 1)
+	item.Id = uuid.New()
+
+	return
+}
+
 func mp3Factory(path string, ext string) (item types.MediaItem, err error) {
+	item, err = baseFactory(path, ext)
+	if err != nil {
+		return
+	}
+
 	f, err := os.OpenFile(path, 0, fs.FileMode(os.O_RDONLY))
 	if err != nil {
 		return
@@ -28,8 +56,6 @@ func mp3Factory(path string, ext string) (item types.MediaItem, err error) {
 		return
 	}
 
-	item.Name = strings.Replace(filepath.Base(path), "."+ext, "", 1)
-	item.Extension = ext
 	metadata := mp3MetadataFromTag(m)
 
 	d := mp3.NewDecoder(f)
