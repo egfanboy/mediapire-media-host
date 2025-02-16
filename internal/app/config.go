@@ -8,13 +8,31 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func getDownloadPath() (string, error) {
-	basePath, err := os.UserHomeDir()
+func getBasePath() (string, error) {
+	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
 
-	return path.Join(basePath, ".mediapire", "mediahost", "downloads"), nil
+	return path.Join(homeDir, ".mediapire", "mediahost"), nil
+}
+
+func getDownloadPath() (string, error) {
+	basePath, err := getBasePath()
+	if err != nil {
+		return "", err
+	}
+
+	return path.Join(basePath, "downloads"), nil
+}
+
+func getArtPath() (string, error) {
+	basePath, err := getBasePath()
+	if err != nil {
+		return "", err
+	}
+
+	return path.Join(basePath, "art"), nil
 }
 
 type SelfCfg struct {
@@ -41,6 +59,7 @@ type config struct {
 	} `yaml:"rabbit"`
 	SelfCfg      `yaml:"mediaHost"`
 	DownloadPath string `yaml:"-"`
+	ArtPath      string `yaml:"-"`
 }
 
 func readConfig() (s config, err error) {
@@ -76,6 +95,13 @@ func readConfig() (s config, err error) {
 	}
 
 	s.DownloadPath = dlPath
+
+	artPath, err := getArtPath()
+	if err != nil {
+		return
+	}
+
+	s.ArtPath = artPath
 
 	return
 }

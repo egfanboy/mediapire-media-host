@@ -49,6 +49,8 @@ func mp3Factory(path string, ext string) (item types.MediaItem, err error) {
 		return
 	}
 
+	defer f.Close()
+
 	s := io.ReadSeeker(f)
 
 	m, err := tag.ReadFrom(s)

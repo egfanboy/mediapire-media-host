@@ -10,7 +10,10 @@ import (
 	"github.com/egfanboy/mediapire-common/router"
 )
 
-const basePath = "/media"
+const (
+	basePath = "/media"
+	pathArt  = "/media/{mediaId}/art"
+)
 
 type mediaController struct {
 	builders []func() router.RouteBuilder
@@ -40,6 +43,20 @@ func (c mediaController) GetMedia() router.RouteBuilder {
 			}
 
 			items, err := c.service.GetMedia(request.Context(), mediaTypes)
+			return items, err
+		})
+}
+
+func (c mediaController) GetMediaArt() router.RouteBuilder {
+	return router.NewV1RouteBuilder().
+		SetMethod(http.MethodOptions, http.MethodGet).
+		SetPath(pathArt).
+		SetReturnCode(http.StatusOK).
+		SetDataType(router.DataTypeFile).
+		SetHandler(func(request *http.Request, p router.RouteParams) (interface{}, error) {
+			mediaId := p.Params["mediaId"]
+
+			items, err := c.service.GetMediaArt(request.Context(), uuid.MustParse(mediaId))
 			return items, err
 		})
 }
@@ -76,7 +93,7 @@ func (c mediaController) DownloadMedia() router.RouteBuilder {
 func initController() mediaController {
 	c := mediaController{service: NewMediaService()}
 
-	c.builders = append(c.builders, c.GetMedia, c.StreamMedia, c.DownloadMedia)
+	c.builders = append(c.builders, c.GetMedia, c.StreamMedia, c.DownloadMedia, c.GetMediaArt)
 
 	return c
 }

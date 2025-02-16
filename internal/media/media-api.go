@@ -16,4 +16,5 @@ type MediaApi interface {
 	DownloadMedia(ctx context.Context, ids []uuid.UUID) ([]byte, error)
 	DeleteMedia(ctx context.Context, ids []uuid.UUID) error
 	CleanupDownloadContent(ctx context.Context, transferId string) error
+	GetMediaArt(ctx context.Context, id uuid.UUID) ([]byte, error)
 }

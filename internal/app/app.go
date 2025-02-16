@@ -18,7 +18,6 @@ type App struct {
 }
 
 func (a *App) IsMediaSupported(extension string) bool {
-
 	for _, t := range a.config.FileTypes {
 		if extension == t {
 			return true
@@ -50,6 +49,12 @@ func initApp() {
 
 	// Create the download path from the config in case it does not exist
 	err := os.MkdirAll(a.config.DownloadPath, os.ModePerm)
+	if err != nil {
+		return
+	}
+
+	// Create the art path from the config in case it does not exist
+	err = os.MkdirAll(a.config.ArtPath, os.ModePerm)
 	if err != nil {
 		return
 	}
