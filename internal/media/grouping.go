@@ -3,6 +3,7 @@ package media
 import (
 	"sort"
 
+	"github.com/egfanboy/mediapire-media-host/internal/utils"
 	"github.com/egfanboy/mediapire-media-host/pkg/types"
 
 	"github.com/rs/zerolog/log"
@@ -90,5 +91,15 @@ func mp3AlbumGrouper(items []types.MediaItem) []types.MediaItem {
 		}
 	}
 
-	return itemsGroupedByAlbum
+	// Remove mp3 items from the list since we will add them back with our grouped items
+	otherItems := utils.Filter(items, func(v types.MediaItem) bool {
+		return v.Extension != "mp3"
+	})
+
+	result := make([]types.MediaItem, 0)
+
+	result = append(result, otherItems...)
+	result = append(result, itemsGroupedByAlbum...)
+
+	return result
 }

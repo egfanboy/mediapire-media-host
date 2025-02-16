@@ -28,10 +28,6 @@ type mediaService struct {
 	app *app.App
 }
 
-var mediaTypeFactory = map[string]mediaFactory{
-	"mp3": mp3Factory,
-}
-
 var mediaCache = map[string][]types.MediaItem{}
 
 var mediaLookup = map[uuid.UUID]types.MediaItem{}
@@ -148,24 +144,18 @@ func (s *mediaService) processFile(path string, wg *sync.WaitGroup, wp utils.Wor
 		return
 	}
 
-	if factory, ok := mediaTypeFactory[ext]; !ok {
+	wp.Work()
+	defer wp.Done()
+
+	factory := getFactory(ext)
+
+	item, err := factory(path, ext)
+	if err != nil {
+		log.Error().Err(err).Str("file", path)
 		return
-	} else {
-		wp.Work()
-		defer wp.Done()
-
-		item, err := factory(path, ext)
-		if err != nil {
-			log.Error().Err(err).Str("file", path)
-			return
-		}
-
-		item.Path = path
-		item.Id = uuid.New()
-		item.ParentDir = filepath.Dir(path)
-
-		items <- item
 	}
+
+	items <- item
 }
 
 func (s *mediaService) processItems(items <-chan types.MediaItem, result chan<- []types.MediaItem) {

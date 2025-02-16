@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/egfanboy/mediapire-media-host/pkg/types"
 	"github.com/google/uuid"
@@ -18,26 +19,33 @@ const (
 )
 
 type MediaHostApi interface {
-	GetHealth(h types.Host) (*http.Response, error)
-	GetMedia(h types.Host) ([]types.MediaItem, *http.Response, error)
-	StreamMedia(h types.Host, mediaId uuid.UUID) ([]byte, *http.Response, error)
-	DownloadTransfer(h types.Host, transferId string) ([]byte, *http.Response, error)
-	GetSettings(h types.Host) (types.MediaHostSettings, *http.Response, error)
+	GetMedia(ctx context.Context, mediaTypes *[]string) ([]types.MediaItem, *http.Response, error)
+	StreamMedia(ctx context.Context, mediaId uuid.UUID) ([]byte, *http.Response, error)
+	DownloadTransfer(ctx context.Context, transferId string) ([]byte, *http.Response, error)
+	GetSettings(ctx context.Context) (types.MediaHostSettings, *http.Response, error)
 }
 
 func buildUriFromHost(h types.Host, apiUri string) string {
 	return fmt.Sprintf("%s://%s:%v%s", h.Scheme(), h.Host(), h.Port(), apiUri)
-
 }
 
-type mediaHostClient struct{}
-
-func (c *mediaHostClient) GetHealth(h types.Host) (*http.Response, error) {
-	return http.Get(buildUriFromHost(h, "/api/v1/health"))
+type mediaHostClient struct {
+	host types.Host
 }
 
-func (c *mediaHostClient) GetMedia(h types.Host) (result []types.MediaItem, r *http.Response, err error) {
-	r, err = http.Get(buildUriFromHost(h, baseMediaPath))
+func (c *mediaHostClient) GetMedia(ctx context.Context, mediaTypes *[]string) (result []types.MediaItem, r *http.Response, err error) {
+	apiUrl := baseMediaPath
+
+	if mediaTypes != nil && len(*mediaTypes) > 0 {
+		apiUrl = apiUrl + fmt.Sprintf("?mediaType=%s", strings.Join(*mediaTypes, ","))
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, buildUriFromHost(c.host, apiUrl), nil)
+	if err != nil {
+		return
+	}
+
+	r, err = http.DefaultClient.Do(req)
 	if err != nil {
 		return
 	}
@@ -53,8 +61,13 @@ func (c *mediaHostClient) GetMedia(h types.Host) (result []types.MediaItem, r *h
 	return
 }
 
-func (c *mediaHostClient) StreamMedia(h types.Host, mediaId uuid.UUID) (b []byte, r *http.Response, err error) {
-	r, err = http.Get(buildUriFromHost(h, fmt.Sprintf("%s/stream?id=%q", baseMediaPath, mediaId)))
+func (c *mediaHostClient) StreamMedia(ctx context.Context, mediaId uuid.UUID) (b []byte, r *http.Response, err error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, buildUriFromHost(c.host, fmt.Sprintf("%s/stream?id=%q", baseMediaPath, mediaId)), nil)
+	if err != nil {
+		return
+	}
+
+	r, err = http.DefaultClient.Do(req)
 	if err != nil {
 		return
 	}
@@ -66,8 +79,13 @@ func (c *mediaHostClient) StreamMedia(h types.Host, mediaId uuid.UUID) (b []byte
 	return
 }
 
-func (c *mediaHostClient) DownloadTransfer(h types.Host, transferId string) ([]byte, *http.Response, error) {
-	r, err := http.Get(buildUriFromHost(h, fmt.Sprintf("%s/%s/download", baseTransfersPath, transferId)))
+func (c *mediaHostClient) DownloadTransfer(ctx context.Context, transferId string) ([]byte, *http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, buildUriFromHost(c.host, fmt.Sprintf("%s/%s/download", baseTransfersPath, transferId)), nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	r, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, r, err
 	}
@@ -83,8 +101,13 @@ func (c *mediaHostClient) DownloadTransfer(h types.Host, transferId string) ([]b
 	return b, r, err
 }
 
-func (c *mediaHostClient) GetSettings(h types.Host) (result types.MediaHostSettings, r *http.Response, err error) {
-	r, err = http.Get(buildUriFromHost(h, baseSettingsPath))
+func (c *mediaHostClient) GetSettings(ctx context.Context) (result types.MediaHostSettings, r *http.Response, err error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, buildUriFromHost(c.host, baseSettingsPath), nil)
+	if err != nil {
+		return
+	}
+
+	r, err = http.DefaultClient.Do(req)
 	if err != nil {
 		return
 	}
@@ -100,6 +123,6 @@ func (c *mediaHostClient) GetSettings(h types.Host) (result types.MediaHostSetti
 	return
 }
 
-func NewClient(ctx context.Context) MediaHostApi {
-	return &mediaHostClient{}
+func NewClient(h types.Host) MediaHostApi {
+	return &mediaHostClient{host: h}
 }
