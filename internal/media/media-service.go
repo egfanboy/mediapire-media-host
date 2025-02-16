@@ -29,12 +29,12 @@ type mediaService struct {
 	app *app.App
 }
 
-var mediaCache = map[string][]types.MediaItem{}
+var mediaCache = utils.NewConcurrentMap[string, []types.MediaItem]()
 
-var mediaLookup = map[uuid.UUID]types.MediaItem{}
+var mediaLookup = utils.NewConcurrentMap[uuid.UUID, types.MediaItem]()
 
 func unwrapCache() (unwrappedItems []types.MediaItem) {
-	for _, items := range mediaCache {
+	for _, items := range mediaCache.Get() {
 		unwrappedItems = append(unwrappedItems, items...)
 	}
 
@@ -44,7 +44,7 @@ func unwrapCache() (unwrappedItems []types.MediaItem) {
 func (s *mediaService) GetMedia(ctx context.Context, mediaTypes []string) (items []types.MediaItem, err error) {
 	items = make([]types.MediaItem, 0)
 
-	if len(mediaCache) == 0 {
+	if mediaCache.Len() == 0 {
 		err = errors.New("no media found")
 		return
 	}
@@ -195,7 +195,7 @@ func (s *mediaService) ScanDirectory(directory string) (err error) {
 	// Close items channel since all files have been processed at this point
 	close(items)
 
-	mediaCache[directory] = <-result
+	mediaCache.Add(directory, <-result)
 
 	return
 }
@@ -232,13 +232,13 @@ func (s *mediaService) getFilePathFromId(ctx context.Context, id uuid.UUID) (str
 }
 
 func (s *mediaService) getMediaItemFromId(ctx context.Context, id uuid.UUID) (types.MediaItem, error) {
-	if item, ok := mediaLookup[id]; ok {
+	if item, ok := mediaLookup.GetKey(id); ok {
 		return item, nil
 	}
 
 	for _, item := range unwrapCache() {
 		if item.Id == id {
-			mediaLookup[id] = item
+			mediaLookup.Add(id, item)
 			return item, nil
 		}
 	}
@@ -247,7 +247,7 @@ func (s *mediaService) getMediaItemFromId(ctx context.Context, id uuid.UUID) (ty
 }
 
 func (s *mediaService) UnsetDirectory(directory string) error {
-	delete(mediaCache, directory)
+	mediaCache.Delete(directory)
 
 	return nil
 }
@@ -348,22 +348,22 @@ func (s *mediaService) removeItemFromCache(item types.MediaItem) error {
 	log.Info().Msgf("Removing item with id %q from the media cache", item.Id)
 
 	// remove the item from the lookup
-	delete(mediaLookup, item.Id)
+	mediaLookup.Delete(item.Id)
 
-	if _, ok := mediaCache[item.ParentDir]; !ok {
+	if parentDirCache, ok := mediaCache.GetKey(item.ParentDir); !ok {
 		return fmt.Errorf("parent dir for item %q is not in the cache", item.Id)
-	}
+	} else {
+		newCache := make([]types.MediaItem, mediaCache.Len())
 
-	newCache := make([]types.MediaItem, len(mediaCache))
-
-	for _, cachedItem := range mediaCache[item.ParentDir] {
-		// different item, add it to the new cache
-		if cachedItem.Id != item.Id {
-			newCache = append(newCache, cachedItem)
+		for _, cachedItem := range parentDirCache {
+			// different item, add it to the new cache
+			if cachedItem.Id != item.Id {
+				newCache = append(newCache, cachedItem)
+			}
 		}
-	}
 
-	mediaCache[item.ParentDir] = newCache
+		mediaCache.Add(item.ParentDir, newCache)
+	}
 
 	return nil
 }
