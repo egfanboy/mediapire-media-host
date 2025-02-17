@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/egfanboy/mediapire-media-host/internal/app"
-	"github.com/google/uuid"
 
 	"github.com/egfanboy/mediapire-common/router"
 )
@@ -56,7 +55,7 @@ func (c mediaController) GetMediaArt() router.RouteBuilder {
 		SetHandler(func(request *http.Request, p router.RouteParams) (interface{}, error) {
 			mediaId := p.Params["mediaId"]
 
-			items, err := c.service.GetMediaArt(request.Context(), uuid.MustParse(mediaId))
+			items, err := c.service.GetMediaArt(request.Context(), mediaId)
 			return items, err
 		})
 }
@@ -70,7 +69,7 @@ func (c mediaController) StreamMedia() router.RouteBuilder {
 		AddQueryParam(router.QueryParam{Name: "id", Required: true}).
 		SetHandler(func(request *http.Request, p router.RouteParams) (interface{}, error) {
 			id := p.Params["id"]
-			return c.service.StreamMedia(request.Context(), uuid.MustParse(id))
+			return c.service.StreamMedia(request.Context(), id)
 		})
 }
 
@@ -81,7 +80,7 @@ func (c mediaController) DownloadMedia() router.RouteBuilder {
 		SetReturnCode(200).
 		SetDataType(router.DataTypeFile).
 		SetHandler(func(request *http.Request, p router.RouteParams) (interface{}, error) {
-			var body []uuid.UUID
+			var body []string
 			err := p.PopulateBody(&body)
 			if err != nil {
 				return nil, err

@@ -20,7 +20,6 @@ import (
 	"github.com/egfanboy/mediapire-media-host/internal/app"
 	"github.com/egfanboy/mediapire-media-host/internal/utils"
 	"github.com/egfanboy/mediapire-media-host/pkg/types"
-	"github.com/google/uuid"
 
 	"github.com/rs/zerolog/log"
 )
@@ -31,7 +30,7 @@ type mediaService struct {
 
 var mediaCache = utils.NewConcurrentMap[string, []types.MediaItem]()
 
-var mediaLookup = utils.NewConcurrentMap[uuid.UUID, types.MediaItem]()
+var mediaLookup = utils.NewConcurrentMap[string, types.MediaItem]()
 
 func unwrapCache() (unwrappedItems []types.MediaItem) {
 	for _, items := range mediaCache.Get() {
@@ -200,7 +199,7 @@ func (s *mediaService) ScanDirectory(directory string) (err error) {
 	return
 }
 
-func (s *mediaService) StreamMedia(ctx context.Context, id uuid.UUID) ([]byte, error) {
+func (s *mediaService) StreamMedia(ctx context.Context, id string) ([]byte, error) {
 	filePath, err := s.getFilePathFromId(ctx, id)
 	if err != nil {
 		return nil, err
@@ -222,7 +221,7 @@ func (s *mediaService) StreamMedia(ctx context.Context, id uuid.UUID) ([]byte, e
 	return b, err
 }
 
-func (s *mediaService) getFilePathFromId(ctx context.Context, id uuid.UUID) (string, error) {
+func (s *mediaService) getFilePathFromId(ctx context.Context, id string) (string, error) {
 	item, err := s.getMediaItemFromId(ctx, id)
 	if err != nil {
 		return "", err
@@ -231,7 +230,7 @@ func (s *mediaService) getFilePathFromId(ctx context.Context, id uuid.UUID) (str
 	return item.Path, nil
 }
 
-func (s *mediaService) getMediaItemFromId(ctx context.Context, id uuid.UUID) (types.MediaItem, error) {
+func (s *mediaService) getMediaItemFromId(ctx context.Context, id string) (types.MediaItem, error) {
 	if item, ok := mediaLookup.GetKey(id); ok {
 		return item, nil
 	}
@@ -243,7 +242,7 @@ func (s *mediaService) getMediaItemFromId(ctx context.Context, id uuid.UUID) (ty
 		}
 	}
 
-	return types.MediaItem{}, &exceptions.ApiException{Err: fmt.Errorf("no item with id %s", id.String()), StatusCode: http.StatusNotFound}
+	return types.MediaItem{}, &exceptions.ApiException{Err: fmt.Errorf("no item with id %s", id), StatusCode: http.StatusNotFound}
 }
 
 func (s *mediaService) UnsetDirectory(directory string) error {
@@ -252,7 +251,7 @@ func (s *mediaService) UnsetDirectory(directory string) error {
 	return nil
 }
 
-func (s *mediaService) DownloadMedia(ctx context.Context, ids []uuid.UUID) ([]byte, error) {
+func (s *mediaService) DownloadMedia(ctx context.Context, ids []string) ([]byte, error) {
 	log.Info().Msg("Start: downloading media")
 	buf := new(bytes.Buffer)
 
@@ -314,7 +313,7 @@ func (s *mediaService) DownloadMedia(ctx context.Context, ids []uuid.UUID) ([]by
 	return buf.Bytes(), err
 }
 
-func (s *mediaService) DeleteMedia(ctx context.Context, ids []uuid.UUID) error {
+func (s *mediaService) DeleteMedia(ctx context.Context, ids []string) error {
 	failedToDelete := make([]string, 0)
 
 	for _, itemId := range ids {
@@ -379,7 +378,7 @@ func (s *mediaService) CleanupDownloadContent(ctx context.Context, transferId st
 	return nil
 }
 
-func (s *mediaService) GetMediaArt(ctx context.Context, id uuid.UUID) ([]byte, error) {
+func (s *mediaService) GetMediaArt(ctx context.Context, id string) ([]byte, error) {
 	item, err := s.getMediaItemFromId(ctx, id)
 	if err != nil {
 		return nil, err
