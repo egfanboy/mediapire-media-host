@@ -93,7 +93,7 @@ func mp3Factory(path string, ext string) (item types.MediaItem, err error) {
 func hashMp3FileForId(item types.MediaItem) string {
 	metadata := item.Metadata.(Mp3Metadata)
 
-	data := fmt.Sprintf("%s-%s-%s-%d", metadata.Artist, metadata.Album, metadata.Title, metadata.TrackOf)
+	data := fmt.Sprintf("%s-%s-%s-%s-%d", item.ParentDir, metadata.Artist, metadata.Album, metadata.Title, metadata.TrackOf)
 	hash := sha256.Sum256([]byte(data))
 	hashStr := hex.EncodeToString(hash[:])
 

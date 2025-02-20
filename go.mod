@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/bep/debounce v1.2.1
 	github.com/dhowden/tag v0.0.0-20220618230019-adf36e896086
-	github.com/egfanboy/mediapire-common v0.0.0-20240522004433-cbd1b5041bc7
+	github.com/egfanboy/mediapire-common v0.0.0-20250220152424-aaced2cf3cdc
 	github.com/fsnotify/fsnotify v1.5.4
 	github.com/google/uuid v1.4.0
 	github.com/gorilla/mux v1.8.0

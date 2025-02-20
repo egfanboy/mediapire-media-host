@@ -259,14 +259,14 @@ func (s *mediaService) DownloadMedia(ctx context.Context, ids []string) ([]byte,
 
 	items := make([]types.MediaItem, len(ids))
 
-	for _, itemId := range ids {
+	for i, itemId := range ids {
 		item, err := s.getMediaItemFromId(ctx, itemId)
 		if err != nil {
 			log.Err(err).Msgf("Failed to get item with id %q", itemId)
 			return nil, err
 		}
 
-		items = append(items, item)
+		items[i] = item
 	}
 
 	groupingFuncs := getGroupingFactories(s.app.FileTypes...)
@@ -352,7 +352,7 @@ func (s *mediaService) removeItemFromCache(item types.MediaItem) error {
 	if parentDirCache, ok := mediaCache.GetKey(item.ParentDir); !ok {
 		return fmt.Errorf("parent dir for item %q is not in the cache", item.Id)
 	} else {
-		newCache := make([]types.MediaItem, mediaCache.Len())
+		newCache := make([]types.MediaItem, 0)
 
 		for _, cachedItem := range parentDirCache {
 			// different item, add it to the new cache

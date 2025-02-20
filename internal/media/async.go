@@ -59,13 +59,7 @@ func handleTransferMessage(ctx context.Context, msg amqp091.Delivery) error {
 
 	mediaService := NewMediaService()
 
-	// TODO: refactor common struct to use string ids
-	in := make([]string, len(input))
-	for _, v := range input {
-		in = append(in, v.String())
-	}
-
-	content, err := mediaService.DownloadMedia(ctx, in)
+	content, err := mediaService.DownloadMedia(ctx, input)
 	if err != nil {
 		msg := err.Error()
 		sendTransferUpdateMessage(ctx, tMsg.Id, &msg)
@@ -134,13 +128,7 @@ func handleDeleteMessage(ctx context.Context, msg amqp091.Delivery) error {
 
 	mediaService := NewMediaService()
 
-	// TODO: refactor common struct to use string ids
-	in := make([]string, len(input))
-	for _, v := range input {
-		in = append(in, v.String())
-	}
-
-	err = mediaService.DeleteMedia(ctx, in)
+	err = mediaService.DeleteMedia(ctx, input)
 	if err != nil {
 		log.Err(err).Msg("Failed to delete all requested media")
 	}

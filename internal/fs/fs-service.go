@@ -3,6 +3,7 @@ package fs
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/bep/debounce"
@@ -37,8 +38,6 @@ func (s *fsService) WatchDirectory(directory string) error {
 	}
 
 	go func() {
-		debouncer := debounce.New(time.Millisecond * 500)
-
 		for {
 			select {
 			case event, ok := <-watcher.Events:
@@ -46,10 +45,8 @@ func (s *fsService) WatchDirectory(directory string) error {
 					return
 				}
 
-				var err error
-				debouncer(func() {
-					err = s.handleWatcherEvent(event, directory, watcher)
-				})
+				err := s.handleWatcherEvent(event, directory, watcher)
+
 				if err != nil {
 					log.Error().Err(err).Msgf("Failed to handle change for directory: %s", directory)
 				}
@@ -96,12 +93,32 @@ func (s *fsService) handleWatcherEvent(event fsnotify.Event, topLevelDirectory s
 	switch event.Op {
 	case fsnotify.Remove:
 		{
-			err := watcher.Remove(event.Name)
-			if err != nil {
-				log.Error().Err(err).Msgf("failed to remove %s from the watchlist", event.Name)
-			}
+			debouncer := debounce.New(time.Millisecond * 500)
 
-			return s.mediaService.UnsetDirectory(event.Name)
+			debouncer(func() {
+				// Note: cannot use stat here since the file no longer exists on the system
+
+				// remove the top level directory from the event name since it cntains the full path
+				relativeDeletedFilePath := strings.Replace(event.Name, topLevelDirectory, "", 1)
+
+				// trim / if it is there to have the format dir?/file
+				relativeDeletedFilePath = strings.TrimPrefix(relativeDeletedFilePath, "/")
+
+				parentDir := filepath.Dir(relativeDeletedFilePath)
+
+				if parentDir != "." {
+					err := watcher.Remove(event.Name)
+					if err != nil {
+						log.Error().Err(err).Msgf("failed to remove %s from the watchlist", event.Name)
+					}
+
+					s.mediaService.UnsetDirectory(event.Name)
+					return
+				}
+
+				return
+			})
+
 		}
 
 	case fsnotify.Chmod:
@@ -109,29 +126,37 @@ func (s *fsService) handleWatcherEvent(event fsnotify.Event, topLevelDirectory s
 		return nil
 
 	default:
-		stat, err := os.Stat(event.Name)
-		if err != nil {
-			return err
+		{
+			debouncer := debounce.New(time.Millisecond * 500)
+
+			debouncer(func() {
+				stat, err := os.Stat(event.Name)
+				if err != nil {
+					return
+				}
+
+				if event.Op == fsnotify.Create && stat.IsDir() {
+					err := watcher.Add(event.Name)
+					if err != nil {
+						log.Error().Err(err).Msgf("failed to add %s to the watchlist", event.Name)
+					}
+				}
+
+				var dirToScan string
+
+				if stat.IsDir() {
+					dirToScan = event.Name
+				} else {
+					dirToScan = filepath.Dir(event.Name)
+				}
+
+				log.Debug().Msgf("Detected a change in directory %s, scanning it again for new media", dirToScan)
+				s.mediaService.ScanDirectory(dirToScan)
+			})
+
 		}
-
-		if event.Op == fsnotify.Create && stat.IsDir() {
-			err := watcher.Add(event.Name)
-			if err != nil {
-				log.Error().Err(err).Msgf("failed to add %s to the watchlist", event.Name)
-			}
-		}
-
-		var dirToScan string
-
-		if stat.IsDir() {
-			dirToScan = event.Name
-		} else {
-			dirToScan = filepath.Dir(event.Name)
-		}
-
-		log.Debug().Msgf("Detected a change in directory %s, scanning it again for new media", dirToScan)
-		return s.mediaService.ScanDirectory(dirToScan)
 	}
+	return nil
 }
 
 func NewFsService() (FsApi, error) {
