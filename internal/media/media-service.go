@@ -151,7 +151,7 @@ func (s *mediaService) processFile(path string, wg *sync.WaitGroup, wp utils.Wor
 
 	item, err := factory(path, ext)
 	if err != nil {
-		log.Error().Err(err).Str("file", path)
+		log.Err(err).Msgf("failed to create media item for file %s", filepath.Base(path))
 		return
 	}
 
@@ -194,7 +194,17 @@ func (s *mediaService) ScanDirectory(directory string) (err error) {
 	// Close items channel since all files have been processed at this point
 	close(items)
 
-	mediaCache.Add(directory, <-result)
+	results := <-result
+
+	resultsWithDir := make([]types.MediaItem, len(results))
+
+	// TODO: need to figure out a better way to organize the media
+	for i, r := range results {
+		r.RootDir = directory
+		resultsWithDir[i] = r
+	}
+
+	mediaCache.Add(directory, resultsWithDir)
 
 	return
 }
@@ -349,7 +359,7 @@ func (s *mediaService) removeItemFromCache(item types.MediaItem) error {
 	// remove the item from the lookup
 	mediaLookup.Delete(item.Id)
 
-	if parentDirCache, ok := mediaCache.GetKey(item.ParentDir); !ok {
+	if parentDirCache, ok := mediaCache.GetKey(item.RootDir); !ok {
 		return fmt.Errorf("parent dir for item %q is not in the cache", item.Id)
 	} else {
 		newCache := make([]types.MediaItem, 0)
@@ -361,7 +371,7 @@ func (s *mediaService) removeItemFromCache(item types.MediaItem) error {
 			}
 		}
 
-		mediaCache.Add(item.ParentDir, newCache)
+		mediaCache.Add(item.RootDir, newCache)
 	}
 
 	return nil

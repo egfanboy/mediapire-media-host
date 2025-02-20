@@ -8,6 +8,7 @@ import (
 
 	"github.com/bep/debounce"
 	"github.com/egfanboy/mediapire-media-host/internal/media"
+	"github.com/egfanboy/mediapire-media-host/internal/utils"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/rs/zerolog/log"
@@ -16,6 +17,8 @@ import (
 type fsService struct {
 	mediaService media.MediaApi
 }
+
+var ignoredFiles = []string{".DS_Store"}
 
 var watcherMapping = map[string]*fsnotify.Watcher{}
 
@@ -127,8 +130,12 @@ func (s *fsService) handleWatcherEvent(event fsnotify.Event, topLevelDirectory s
 
 	default:
 		{
-			debouncer := debounce.New(time.Millisecond * 500)
+			if utils.Contains(ignoredFiles, filepath.Base(event.Name)) {
+				log.Debug().Msg("Ignoring fs event since the target is an ignored file.")
+				return nil
+			}
 
+			debouncer := debounce.New(time.Millisecond * 500)
 			debouncer(func() {
 				stat, err := os.Stat(event.Name)
 				if err != nil {
@@ -138,7 +145,7 @@ func (s *fsService) handleWatcherEvent(event fsnotify.Event, topLevelDirectory s
 				if event.Op == fsnotify.Create && stat.IsDir() {
 					err := watcher.Add(event.Name)
 					if err != nil {
-						log.Error().Err(err).Msgf("failed to add %s to the watchlist", event.Name)
+						log.Err(err).Msgf("failed to add %s to the watchlist", event.Name)
 					}
 				}
 

@@ -11,3 +11,13 @@ func Filter[T any](src []T, predicate func(arg T) bool) []T {
 
 	return result
 }
+
+func Contains[T comparable](src []T, value T) bool {
+	for _, v := range src {
+		if v == value {
+			return true
+		}
+	}
+
+	return false
+}
