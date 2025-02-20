@@ -75,6 +75,7 @@ func mp3Factory(path string, ext string) (item types.MediaItem, err error) {
 				break
 			}
 
+			err = errD
 			return
 		}
 
