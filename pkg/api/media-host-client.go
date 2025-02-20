@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/egfanboy/mediapire-media-host/pkg/types"
-	"github.com/google/uuid"
 )
 
 const (
@@ -20,10 +19,10 @@ const (
 
 type MediaHostApi interface {
 	GetMedia(ctx context.Context, mediaTypes *[]string) ([]types.MediaItem, *http.Response, error)
-	StreamMedia(ctx context.Context, mediaId uuid.UUID) ([]byte, *http.Response, error)
+	StreamMedia(ctx context.Context, mediaId string) ([]byte, *http.Response, error)
 	DownloadTransfer(ctx context.Context, transferId string) ([]byte, *http.Response, error)
 	GetSettings(ctx context.Context) (types.MediaHostSettings, *http.Response, error)
-	GetMediaArt(ctx context.Context, mediaId uuid.UUID) ([]byte, *http.Response, error)
+	GetMediaArt(ctx context.Context, mediaId string) ([]byte, *http.Response, error)
 }
 
 func buildUriFromHost(h types.Host, apiUri string) string {
@@ -62,8 +61,8 @@ func (c *mediaHostClient) GetMedia(ctx context.Context, mediaTypes *[]string) (r
 	return
 }
 
-func (c *mediaHostClient) StreamMedia(ctx context.Context, mediaId uuid.UUID) (b []byte, r *http.Response, err error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, buildUriFromHost(c.host, fmt.Sprintf("%s/stream?id=%q", baseMediaPath, mediaId)), nil)
+func (c *mediaHostClient) StreamMedia(ctx context.Context, mediaId string) (b []byte, r *http.Response, err error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, buildUriFromHost(c.host, fmt.Sprintf("%s/stream?id=%s", baseMediaPath, mediaId)), nil)
 	if err != nil {
 		return
 	}
@@ -124,8 +123,8 @@ func (c *mediaHostClient) GetSettings(ctx context.Context) (result types.MediaHo
 	return
 }
 
-func (c *mediaHostClient) GetMediaArt(ctx context.Context, mediaId uuid.UUID) ([]byte, *http.Response, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, buildUriFromHost(c.host, fmt.Sprintf("%s/%s/art", baseMediaPath, mediaId.String())), nil)
+func (c *mediaHostClient) GetMediaArt(ctx context.Context, mediaId string) ([]byte, *http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, buildUriFromHost(c.host, fmt.Sprintf("%s/%s/art", baseMediaPath, mediaId)), nil)
 	if err != nil {
 		return nil, nil, err
 	}
