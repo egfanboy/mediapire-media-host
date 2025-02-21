@@ -54,6 +54,8 @@ func handleTransferMessage(ctx context.Context, msg amqp091.Delivery) error {
 		return nil
 	}
 
+	log.Info().Msgf("Transfer ready message %s is for this node, downloading content to disk", tMsg.TransferId)
+
 	reader := bytes.NewReader(tMsg.Content)
 
 	zipReader, err := zip.NewReader(reader, int64(len(tMsg.Content)))
