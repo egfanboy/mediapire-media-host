@@ -115,6 +115,7 @@ func handleTransferMessage(ctx context.Context, msg amqp091.Delivery) error {
 		}
 	}
 
+	log.Info().Msgf("Transfer content successfully saved to disk for transfer %s.", tMsg.TransferId)
 	// success
 	sendTransferUpdateMessage(ctx, tMsg.TransferId, nil)
 
