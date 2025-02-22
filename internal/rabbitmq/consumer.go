@@ -21,7 +21,7 @@ func RegisterConsumer(h consumerHandler, routingKey string) {
 
 func initializeConsumers(ctx context.Context, channel *amqp091.Channel) error {
 	appInstance := app.GetApp()
-	q, err := env.Channel.QueueDeclare(
+	q, err := channel.QueueDeclare(
 		fmt.Sprintf("mediapire-mediahost-%s", appInstance.Name), // name
 		true,  // durable
 		false, // delete when unused
@@ -36,7 +36,7 @@ func initializeConsumers(ctx context.Context, channel *amqp091.Channel) error {
 	for routingKey := range consummerMapping.Get() {
 		log.Debug().Msgf("Setting up consumer for routing key %s", routingKey)
 
-		err = env.Channel.QueueBind(
+		err = channel.QueueBind(
 			q.Name,     // queue name
 			routingKey, // routing key
 			// TODO: make exchange a constant
@@ -48,7 +48,7 @@ func initializeConsumers(ctx context.Context, channel *amqp091.Channel) error {
 		}
 	}
 
-	msgs, err := env.Channel.Consume(
+	msgs, err := channel.Consume(
 		q.Name, // queue
 		"",     // consumer
 		false,  // auto ack
@@ -60,12 +60,6 @@ func initializeConsumers(ctx context.Context, channel *amqp091.Channel) error {
 	if err != nil {
 		return err
 	}
-
-	connClose := env.Channel.NotifyClose(make(chan *amqp091.Error))
-	go func() {
-		err := <-connClose
-		log.Err(err).Msg("Channel was closed")
-	}()
 
 	go func() {
 		for msg := range msgs {
