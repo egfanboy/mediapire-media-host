@@ -36,9 +36,6 @@ func sendTransferUpdateMessage(ctx context.Context, transferId string, failureRe
 func handleTransferMessage(ctx context.Context, msg amqp091.Delivery) error {
 	var tMsg messaging.TransferMessage
 
-	// acknowledge the message
-	msg.Ack(false)
-
 	err := json.Unmarshal(msg.Body, &tMsg)
 	if err != nil {
 		msg := "failed to unmarshal transfer message"
@@ -104,9 +101,6 @@ func handleTransferMessage(ctx context.Context, msg amqp091.Delivery) error {
 
 func handleDeleteMessage(ctx context.Context, msg amqp091.Delivery) error {
 	var deleteMsg messaging.DeleteMediaMessage
-
-	// acknowledge the message
-	msg.Ack(false)
 
 	err := json.Unmarshal(msg.Body, &deleteMsg)
 	if err != nil {

@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/egfanboy/mediapire-common/router"
-	"github.com/google/uuid"
 
 	"github.com/rs/zerolog/log"
 )
@@ -14,7 +13,7 @@ type App struct {
 	ControllerRegistry *router.ControllerRegistry
 
 	config
-	NodeId uuid.UUID
+	NodeId string
 }
 
 func (a *App) IsMediaSupported(extension string) bool {

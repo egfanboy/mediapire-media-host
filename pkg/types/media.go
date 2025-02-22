@@ -1,7 +1,5 @@
 package types
 
-import "github.com/google/uuid"
-
 type MediaItem struct {
 	Name      string      `json:"name"`
 	Extension string      `json:"extension"`
@@ -14,4 +12,4 @@ type MediaItem struct {
 	ParentDir string `json:"-"`
 }
 
-type DownloadRequest []uuid.UUID
+type DownloadRequest []string

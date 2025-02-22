@@ -26,9 +26,6 @@ const (
 func handleTransferMessage(ctx context.Context, msg amqp091.Delivery) error {
 	var tMsg messaging.TransferReadyMessage
 
-	// acknowledge the message
-	msg.Ack(false)
-
 	log.Info().Msg("Received transfer ready message for transfer")
 
 	err := json.Unmarshal(msg.Body, &tMsg)
@@ -118,6 +115,7 @@ func handleTransferMessage(ctx context.Context, msg amqp091.Delivery) error {
 		}
 	}
 
+	log.Info().Msgf("Transfer content successfully saved to disk for transfer %s.", tMsg.TransferId)
 	// success
 	sendTransferUpdateMessage(ctx, tMsg.TransferId, nil)
 

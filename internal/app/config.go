@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v3"
 )
 
@@ -48,6 +49,7 @@ type consulCfg struct {
 }
 
 type config struct {
+	Name        string    `yaml:"name"`
 	Directories []string  `yaml:"directories"`
 	FileTypes   []string  `yaml:"fileTypes"`
 	Consul      consulCfg `yaml:"consul"`
@@ -79,7 +81,6 @@ func readConfig() (s config, err error) {
 	}
 
 	f, err := os.ReadFile(configPath)
-
 	if err != nil {
 		return
 	}
@@ -87,6 +88,11 @@ func readConfig() (s config, err error) {
 	err = yaml.Unmarshal(f, &s)
 	if err != nil {
 		return
+	}
+
+	if s.Name == "" {
+		log.Error().Msg("Must provide a name in the config file")
+		os.Exit(1)
 	}
 
 	dlPath, err := getDownloadPath()
