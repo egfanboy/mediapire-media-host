@@ -1,13 +1,18 @@
 package consul
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"net"
 	"strconv"
 
 	"github.com/egfanboy/mediapire-media-host/internal/app"
-	"github.com/google/uuid"
 	"github.com/hashicorp/consul/api"
+)
+
+const (
+	mediahostConsulTag = "mediapire-media-host"
 )
 
 var consulClient *api.Client
@@ -44,47 +49,12 @@ func findTrafficIp() (net.IP, error) {
 	return localAddr.IP, nil
 }
 
-// Finds any service that is registered for this address and port and returns it
-func findServiceForHost(host string, port int) (*api.AgentService, error) {
-	services, err := consulClient.Agent().ServicesWithFilter("Service == \"media-host-node\"")
-	if err != nil {
-		return nil, err
-	}
+func generateNodeId(appName string) string {
+	data := fmt.Sprintf("mediapire-media-host-%s", appName)
+	hash := sha256.Sum256([]byte(data))
+	hashStr := hex.EncodeToString(hash[:])
 
-	servicesForHost := make([]*api.AgentService, 0)
-
-	for i := range services {
-		service := services[i]
-
-		h, ok := service.Meta["host"]
-		if !ok {
-			continue
-		}
-
-		p, ok := service.Meta["port"]
-		if !ok {
-			continue
-		}
-
-		metaPort, err := strconv.Atoi(p)
-		if err != nil {
-			continue
-		}
-
-		if h == host && metaPort == port {
-			servicesForHost = append(servicesForHost, service)
-		}
-	}
-
-	if len(servicesForHost) == 0 {
-		return nil, nil
-	}
-
-	if len(servicesForHost) > 1 {
-		return nil, fmt.Errorf("found multiple services for host %s and port %d", host, port)
-	}
-
-	return servicesForHost[0], nil
+	return hashStr[len(hashStr)-12:]
 }
 
 func RegisterService() error {
@@ -104,27 +74,14 @@ func RegisterService() error {
 
 	self := appInstance.SelfCfg
 
-	service, err := findServiceForHost(selfIp, self.Port)
-	if err != nil {
-		return err
-	}
-
-	var nodeId uuid.UUID
-
-	if service != nil {
-		nodeId = uuid.MustParse(service.ID)
-	} else {
-		nodeId, err = uuid.NewUUID()
-		if err != nil {
-			return err
-		}
-	}
+	nodeId := generateNodeId(appInstance.Name)
 
 	registration := &api.AgentServiceRegistration{
-		ID:      nodeId.String(),
-		Name:    "media-host-node",
+		ID:      nodeId,
+		Name:    appInstance.Name,
 		Port:    self.Port,
 		Address: selfIp,
+		Tags:    []string{mediahostConsulTag},
 		Check: &api.AgentServiceCheck{
 			HTTP:     fmt.Sprintf("%s://%s:%v/api/v1/health", self.Scheme, selfIp, self.Port),
 			Interval: "10s",
@@ -137,7 +94,7 @@ func RegisterService() error {
 		},
 	}
 
-	err = consulClient.Agent().ServiceRegister(registration)
+	err := consulClient.Agent().ServiceRegister(registration)
 	if err != nil {
 		return err
 	}
@@ -147,5 +104,5 @@ func RegisterService() error {
 }
 
 func UnregisterService() error {
-	return consulClient.Agent().ServiceDeregister(app.GetApp().NodeId.String())
+	return consulClient.Agent().ServiceDeregister(app.GetApp().NodeId)
 }

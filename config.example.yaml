@@ -1,3 +1,5 @@
+# unique name for your host instance
+name: my-media-host-1
 # Directories to scan for media
 directories:
 # Type of media we want to scan
@@ -7,7 +9,8 @@ mediaHost:
   scheme: http
   # port of the media host (self) instance
   port: 444
-  # connection information for media manager
+  # Optional, if running in a container and consul is on another host need to provide address to reach the service within the container
+  address: "127.0.0.1"
 consul:
   scheme: http
   port: 8500
@@ -16,5 +19,5 @@ consul:
 rabbit:
   username: guest
   password: guest
-  address: 127.0.0.1
+  address: 10.0.0.124
   port: 5672
