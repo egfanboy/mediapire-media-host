@@ -61,6 +61,12 @@ func initializeConsumers(ctx context.Context, channel *amqp091.Channel) error {
 		return err
 	}
 
+	connClose := env.Channel.NotifyClose(make(chan *amqp091.Error))
+	go func() {
+		err := <-connClose
+		log.Err(err).Msg("Channel was closed")
+	}()
+
 	go func() {
 		for msg := range msgs {
 			log.Debug().Msgf("Handling message for routing key %s", msg.RoutingKey)
