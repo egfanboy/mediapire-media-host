@@ -1,6 +1,8 @@
 package fs
 
 import (
+	"context"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,24 +20,108 @@ type fsService struct {
 	mediaService media.MediaApi
 }
 
-var ignoredFiles = []string{".DS_Store"}
+const (
+	// How often we process fs event batches
+	eventProcessingInterval = time.Second * 10
+	// Maximum amount of events
+	eventBuffer = 100
+)
 
-var watcherMapping = map[string]*fsnotify.Watcher{}
+var (
+	ignoredFiles = []string{".DS_Store"}
+)
 
+type fsWatcher struct {
+	w *fsnotify.Watcher
+
+	deleteBatchProcessor utils.AsyncBatchProcessor[fsnotify.Event]
+	directory            string
+}
+
+func (w *fsWatcher) ProcessDeletedItems(events []fsnotify.Event) {
+	log.Debug().Msgf("Processing %d delete events", len(events))
+
+	eventNames := utils.NewUnorderedSet[string]()
+
+	// Get unique name of events
+	for _, event := range events {
+		eventNames.Add(event.Name)
+	}
+
+	affectedDirectories := utils.NewUnorderedSet[string]()
+
+	// Get unique name of affected directories (parent of events)
+	for _, event := range eventNames.Values() {
+		affectedDirectories.Add(filepath.Dir(event))
+	}
+
+	// Try to remove items from media service
+	media.NewMediaService().HandleFileSystemDeletions(context.Background(), w.directory, eventNames.Values())
+
+	for _, affectedDir := range affectedDirectories.Values() {
+		relativePath := strings.ReplaceAll(affectedDir, w.directory, "")
+
+		if utils.Contains(w.w.WatchList(), affectedDir) {
+			content, err := os.ReadDir(affectedDir)
+			if err != nil {
+				if os.IsNotExist(err) {
+					log.Debug().Msgf("Directory %s is no longer on disk, stop watching it.", relativePath)
+					err := w.w.Remove(affectedDir)
+					if err != nil {
+						log.Err(err).Msgf("Failed to remove directory from watchlist %s", relativePath)
+					}
+				}
+				continue
+			}
+
+			// Filter out ignored files and if no more content in this directory, stop watching and delete it from disk
+			if len(utils.Filter(content, func(file fs.DirEntry) bool {
+				return !utils.Contains(ignoredFiles, file.Name())
+			})) == 0 {
+				log.Debug().Msgf("Directory %s has no more content, stop watching it and delete it.", relativePath)
+				err := w.w.Remove(affectedDir)
+				if err != nil {
+					log.Err(err).Msgf("Failed to remove directory from watchlist %s", relativePath)
+				}
+
+				err = os.RemoveAll(affectedDir)
+				if err != nil {
+					log.Err(err).Msgf("Failed to remove directory from disk %s", relativePath)
+				}
+			}
+		}
+	}
+
+}
+
+func (w *fsWatcher) Stop() {
+	w.deleteBatchProcessor.Stop()
+	w.w.Close()
+}
+
+var watcherMapping = map[string]*fsWatcher{}
+
+/*
+Creates a fsnotify.Watcher for a given directory and walks the directory
+adding subdirectories to the watch list and starting a goroutine to consume the fs events
+*/
 func (s *fsService) WatchDirectory(directory string) error {
-	var watcher *fsnotify.Watcher
+	var watcher *fsWatcher
 
 	if w, ok := watcherMapping[directory]; !ok {
-
 		newW, err := fsnotify.NewWatcher()
-
 		if err != nil {
 			log.Error().Err(err).Msgf("Failed to create new watcher for directory: %s", directory)
 
 			return err
 		}
 
-		watcher = newW
+		watcher = &fsWatcher{
+			w:         newW,
+			directory: directory,
+		}
+		watcher.deleteBatchProcessor = utils.NewAsyncBatchProcessor(eventProcessingInterval, eventBuffer, watcher.ProcessDeletedItems)
+
 	} else {
 		watcher = w
 	}
@@ -43,24 +129,23 @@ func (s *fsService) WatchDirectory(directory string) error {
 	go func() {
 		for {
 			select {
-			case event, ok := <-watcher.Events:
+			case event, ok := <-watcher.w.Events:
 				if !ok {
 					return
 				}
 
-				err := s.handleWatcherEvent(event, directory, watcher)
+				err := s.handleWatcherEvent(event, watcher)
 
 				if err != nil {
 					log.Error().Err(err).Msgf("Failed to handle change for directory: %s", directory)
 				}
-			case err, ok := <-watcher.Errors:
+			case err, ok := <-watcher.w.Errors:
 				if !ok {
 					return
 				}
 				log.Error().Err(err).Msgf("An error occured in the watcher for directory %s", directory)
 			}
 		}
-
 	}()
 
 	// Errors are handled internally
@@ -73,7 +158,7 @@ func (s *fsService) WatchDirectory(directory string) error {
 		}
 		//  check if we just support 1 level of nested
 		if info.IsDir() {
-			err = watcher.Add(path)
+			err = watcher.w.Add(path)
 			if err != nil {
 				log.Error().Err(err).Msgf("Failed to start watching directory: %s", path)
 			}
@@ -87,41 +172,37 @@ func (s *fsService) WatchDirectory(directory string) error {
 
 func (s *fsService) CloseWatchers() {
 	for _, w := range watcherMapping {
-		w.Close()
+		w.Stop()
 	}
 }
 
 // topLevelDirectory refers to the directory item in the config
-func (s *fsService) handleWatcherEvent(event fsnotify.Event, topLevelDirectory string, watcher *fsnotify.Watcher) error {
+func (s *fsService) handleWatcherEvent(event fsnotify.Event, watcher *fsWatcher) error {
+	if utils.Contains(ignoredFiles, filepath.Base(event.Name)) {
+		log.Debug().Msg("Ignoring fs event since the target is an ignored file.")
+		return nil
+	}
+
 	switch event.Op {
+	case fsnotify.Rename | fsnotify.Remove:
+		watcher.deleteBatchProcessor.Add(event)
 	case fsnotify.Remove:
+		watcher.deleteBatchProcessor.Add(event)
+	case fsnotify.Rename:
 		{
-			debouncer := debounce.New(time.Millisecond * 500)
-
-			debouncer(func() {
-				// Note: cannot use stat here since the file no longer exists on the system
-
-				// remove the top level directory from the event name since it cntains the full path
-				relativeDeletedFilePath := strings.Replace(event.Name, topLevelDirectory, "", 1)
-
-				// trim / if it is there to have the format dir?/file
-				relativeDeletedFilePath = strings.TrimPrefix(relativeDeletedFilePath, "/")
-
-				parentDir := filepath.Dir(relativeDeletedFilePath)
-
-				if parentDir != "." {
-					err := watcher.Remove(event.Name)
-					if err != nil {
-						log.Error().Err(err).Msgf("failed to remove %s from the watchlist", event.Name)
-					}
-
-					s.mediaService.UnsetDirectory(event.Name)
-					return
+			/**
+			* On MacOS if a user moves a file to trash (deletes it) we get a Rename Op
+			* Therefore, try to stat the file and if the error is the not exist error add it to the delete batch
+			**/
+			_, err := os.Stat(event.Name)
+			if err != nil {
+				if os.IsNotExist(err) {
+					watcher.deleteBatchProcessor.Add(event)
+					return nil
 				}
 
-				return
-			})
-
+				return err
+			}
 		}
 
 	case fsnotify.Chmod:
@@ -130,11 +211,6 @@ func (s *fsService) handleWatcherEvent(event fsnotify.Event, topLevelDirectory s
 
 	default:
 		{
-			if utils.Contains(ignoredFiles, filepath.Base(event.Name)) {
-				log.Debug().Msg("Ignoring fs event since the target is an ignored file.")
-				return nil
-			}
-
 			debouncer := debounce.New(time.Millisecond * 500)
 			debouncer(func() {
 				stat, err := os.Stat(event.Name)
@@ -143,7 +219,7 @@ func (s *fsService) handleWatcherEvent(event fsnotify.Event, topLevelDirectory s
 				}
 
 				if event.Op == fsnotify.Create && stat.IsDir() {
-					err := watcher.Add(event.Name)
+					err := watcher.w.Add(event.Name)
 					if err != nil {
 						log.Err(err).Msgf("failed to add %s to the watchlist", event.Name)
 					}
