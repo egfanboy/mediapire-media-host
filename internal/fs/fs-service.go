@@ -90,8 +90,6 @@ func (w *fsWatcher) ProcessDeletedItems(events []fsnotify.Event) {
 				}
 			}
 		}
-
-		log.Info().Msgf("Affected directory %s ", affectedDir)
 	}
 
 }
