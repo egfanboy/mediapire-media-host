@@ -6,8 +6,6 @@ type MediaItem struct {
 	Path      string      `json:"-"`
 	Id        string      `json:"id"`
 	Metadata  interface{} `json:"metadata"`
-	// Top level directory this item belongs to
-	RootDir string `json:"-"`
 	// Direct parent of the item
 	ParentDir string `json:"-"`
 }

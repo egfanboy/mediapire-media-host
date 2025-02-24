@@ -3,8 +3,6 @@ package utils
 import (
 	"sync"
 	"time"
-
-	"github.com/rs/zerolog/log"
 )
 
 type AsyncBatchProcessor[T any] interface {
@@ -79,7 +77,7 @@ func (dr *asyncBatchProcessor[T]) triggerRead() {
 // processBatch reads all available items and processes them
 func (dr *asyncBatchProcessor[T]) processBatch() {
 	var batch []T
-	log.Debug().Msg("Processing Batch")
+
 	for {
 		select {
 		case v := <-dr.values:
@@ -87,8 +85,6 @@ func (dr *asyncBatchProcessor[T]) processBatch() {
 		default:
 			if len(batch) > 0 {
 				dr.processFn(batch) // Process batch
-			} else {
-				log.Debug().Msg("Nothing to processing")
 			}
 
 			return
