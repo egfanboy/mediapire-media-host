@@ -440,6 +440,31 @@ func (s *mediaService) GetMediaArt(ctx context.Context, id string) ([]byte, erro
 	return buf.Bytes(), nil
 }
 
+func (s *mediaService) HandleFileSystemDeletions(ctx context.Context, rootDirectory string, files []string) error {
+	if mediaForDirectory, ok := mediaCache.GetKey(rootDirectory); !ok {
+		return fmt.Errorf("no media for directory %s", rootDirectory)
+	} else {
+
+		// file could be a specific file or a directory
+		for _, file := range files {
+		mediaLoop:
+			for _, media := range mediaForDirectory {
+				if media.Path == file || media.ParentDir == file {
+					err := s.removeItemFromCache(media)
+					if err != nil {
+						log.Err(err).Msgf("failed to remove delete item %s from cache", media.Name)
+					}
+					// found item for this file break and go to next file
+					break mediaLoop
+				}
+			}
+
+		}
+
+		return nil
+	}
+}
+
 func NewMediaService() MediaApi {
 	return &mediaService{app: app.GetApp()}
 }
