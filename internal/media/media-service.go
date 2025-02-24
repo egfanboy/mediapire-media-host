@@ -158,8 +158,8 @@ func (s *mediaService) processFile(path string, wg *sync.WaitGroup, wp utils.Wor
 	items <- item
 }
 
-func (s *mediaService) processItems(items <-chan types.MediaItem, result chan<- []types.MediaItem) {
-	mediaItems := make([]types.MediaItem, 0)
+func (s *mediaService) processItems(items <-chan types.MediaItem, result chan<- map[string][]types.MediaItem) {
+	mediaItems := map[string][]types.MediaItem{}
 
 	for item := range items {
 		// TODO: Make this dynamic for extension type
@@ -167,7 +167,7 @@ func (s *mediaService) processItems(items <-chan types.MediaItem, result chan<- 
 			mp3ItemChan <- item
 		}
 
-		mediaItems = append(mediaItems, item)
+		mediaItems[item.ParentDir] = append(mediaItems[item.ParentDir], item)
 	}
 
 	result <- mediaItems
@@ -178,7 +178,7 @@ func (s *mediaService) ScanDirectory(directory string) (err error) {
 
 	wp := utils.NewWorkerPool(workers)
 	items := make(chan types.MediaItem)
-	result := make(chan []types.MediaItem)
+	result := make(chan map[string][]types.MediaItem)
 
 	wg := new(sync.WaitGroup)
 
@@ -195,16 +195,9 @@ func (s *mediaService) ScanDirectory(directory string) (err error) {
 	close(items)
 
 	results := <-result
-
-	resultsWithDir := make([]types.MediaItem, len(results))
-
-	// TODO: need to figure out a better way to organize the media
-	for i, r := range results {
-		r.RootDir = directory
-		resultsWithDir[i] = r
+	for k, v := range results {
+		mediaCache.Add(k, v)
 	}
-
-	mediaCache.Add(directory, resultsWithDir)
 
 	return
 }
@@ -359,7 +352,7 @@ func (s *mediaService) removeItemFromCache(item types.MediaItem) error {
 	// remove the item from the lookup
 	mediaLookup.Delete(item.Id)
 
-	if parentDirCache, ok := mediaCache.GetKey(item.RootDir); !ok {
+	if parentDirCache, ok := mediaCache.GetKey(item.ParentDir); !ok {
 		return fmt.Errorf("parent dir for item %q is not in the cache", item.Id)
 	} else {
 		newCache := make([]types.MediaItem, 0)
@@ -371,7 +364,7 @@ func (s *mediaService) removeItemFromCache(item types.MediaItem) error {
 			}
 		}
 
-		mediaCache.Add(item.RootDir, newCache)
+		mediaCache.Add(item.ParentDir, newCache)
 	}
 
 	return nil

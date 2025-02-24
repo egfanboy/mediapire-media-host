@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bep/debounce"
 	"github.com/egfanboy/mediapire-media-host/internal/media"
 	"github.com/egfanboy/mediapire-media-host/internal/utils"
 
@@ -32,10 +31,48 @@ var (
 )
 
 type fsWatcher struct {
-	w *fsnotify.Watcher
+	w                            *fsnotify.Watcher
+	deleteBatchProcessor         utils.AsyncBatchProcessor[fsnotify.Event]
+	nonDestructiveBatchProcessor utils.AsyncBatchProcessor[fsnotify.Event]
+	directory                    string
+}
 
-	deleteBatchProcessor utils.AsyncBatchProcessor[fsnotify.Event]
-	directory            string
+func (w *fsWatcher) ProcessEvents(events []fsnotify.Event) {
+	log.Debug().Msgf("Processing %d events", len(events))
+
+	affectedDirectories := utils.NewUnorderedSet[string]()
+
+	for _, event := range events {
+		stat, err := os.Stat(event.Name)
+		if err != nil {
+			return
+		}
+
+		if event.Op == fsnotify.Create && stat.IsDir() {
+			err := w.w.Add(event.Name)
+			if err != nil {
+				log.Err(err).Msgf("failed to add %s to the watchlist", event.Name)
+			}
+		}
+
+		if stat.IsDir() {
+			affectedDirectories.Add(event.Name)
+		} else {
+			affectedDirectories.Add(filepath.Dir(event.Name))
+		}
+
+		mediaService := media.NewMediaService()
+		for _, directory := range affectedDirectories.Values() {
+			relativePath := strings.ReplaceAll(directory, w.directory, "")
+
+			log.Debug().Msgf("Detected a change in directory %s, scanning it again for new media", relativePath)
+			err := mediaService.ScanDirectory(directory)
+			if err != nil {
+				log.Err(err).Msgf("Failed to scan content in directory %s", relativePath)
+			}
+
+		}
+	}
 }
 
 func (w *fsWatcher) ProcessDeletedItems(events []fsnotify.Event) {
@@ -121,7 +158,8 @@ func (s *fsService) WatchDirectory(directory string) error {
 			directory: directory,
 		}
 		watcher.deleteBatchProcessor = utils.NewAsyncBatchProcessor(eventProcessingInterval, eventBuffer, watcher.ProcessDeletedItems)
-
+		watcher.nonDestructiveBatchProcessor = utils.NewAsyncBatchProcessor(eventProcessingInterval, eventBuffer, watcher.ProcessEvents)
+		watcher.w.Add(directory)
 	} else {
 		watcher = w
 	}
@@ -210,34 +248,8 @@ func (s *fsService) handleWatcherEvent(event fsnotify.Event, watcher *fsWatcher)
 		return nil
 
 	default:
-		{
-			debouncer := debounce.New(time.Millisecond * 500)
-			debouncer(func() {
-				stat, err := os.Stat(event.Name)
-				if err != nil {
-					return
-				}
+		watcher.nonDestructiveBatchProcessor.Add(event)
 
-				if event.Op == fsnotify.Create && stat.IsDir() {
-					err := watcher.w.Add(event.Name)
-					if err != nil {
-						log.Err(err).Msgf("failed to add %s to the watchlist", event.Name)
-					}
-				}
-
-				var dirToScan string
-
-				if stat.IsDir() {
-					dirToScan = event.Name
-				} else {
-					dirToScan = filepath.Dir(event.Name)
-				}
-
-				log.Debug().Msgf("Detected a change in directory %s, scanning it again for new media", dirToScan)
-				s.mediaService.ScanDirectory(dirToScan)
-			})
-
-		}
 	}
 	return nil
 }

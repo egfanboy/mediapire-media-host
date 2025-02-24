@@ -3,7 +3,6 @@ module github.com/egfanboy/mediapire-media-host
 go 1.18
 
 require (
-	github.com/bep/debounce v1.2.1
 	github.com/dhowden/tag v0.0.0-20220618230019-adf36e896086
 	github.com/egfanboy/mediapire-common v0.0.0-20250221235900-73e3c8ad112f
 	github.com/fsnotify/fsnotify v1.5.4
