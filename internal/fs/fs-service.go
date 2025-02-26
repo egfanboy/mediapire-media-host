@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/egfanboy/mediapire-media-host/internal/fs/ignorelist"
 	"github.com/egfanboy/mediapire-media-host/internal/media"
 	"github.com/egfanboy/mediapire-media-host/internal/utils"
 
@@ -93,7 +94,7 @@ func (w *fsWatcher) ProcessDeletedItems(events []fsnotify.Event) {
 	}
 
 	// Try to remove items from media service
-	media.NewMediaService().HandleFileSystemDeletions(context.Background(), w.directory, eventNames.Values())
+	media.NewMediaService().HandleFileSystemDeletions(context.Background(), eventNames.Values())
 
 	for _, affectedDir := range affectedDirectories.Values() {
 		relativePath := strings.ReplaceAll(affectedDir, w.directory, "")
@@ -221,6 +222,12 @@ func (s *fsService) handleWatcherEvent(event fsnotify.Event, watcher *fsWatcher)
 		return nil
 	}
 
+	if ignorelist.GetIgnoreList().IsFileIgnored(event.Name) {
+		log.Debug().Msg("Ignoring fs event since the target is a temporarily ignored file.")
+
+		return nil
+	}
+
 	switch event.Op {
 	case fsnotify.Rename | fsnotify.Remove:
 		watcher.deleteBatchProcessor.Add(event)
@@ -255,6 +262,5 @@ func (s *fsService) handleWatcherEvent(event fsnotify.Event, watcher *fsWatcher)
 }
 
 func NewFsService() (FsApi, error) {
-
 	return &fsService{mediaService: media.NewMediaService()}, nil
 }

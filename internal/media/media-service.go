@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+
 	"io/fs"
 	"net/http"
 	"os"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/egfanboy/mediapire-common/exceptions"
 	"github.com/egfanboy/mediapire-media-host/internal/app"
+	"github.com/egfanboy/mediapire-media-host/internal/fs/ignorelist"
 	"github.com/egfanboy/mediapire-media-host/internal/utils"
 	"github.com/egfanboy/mediapire-media-host/pkg/types"
 
@@ -433,13 +435,32 @@ func (s *mediaService) GetMediaArt(ctx context.Context, id string) ([]byte, erro
 	return buf.Bytes(), nil
 }
 
-func (s *mediaService) HandleFileSystemDeletions(ctx context.Context, rootDirectory string, files []string) error {
-	if mediaForDirectory, ok := mediaCache.GetKey(rootDirectory); !ok {
-		return fmt.Errorf("no media for directory %s", rootDirectory)
-	} else {
+func (s *mediaService) HandleFileSystemDeletions(ctx context.Context, files []string) error {
+	// file could be a specific file or a directory
+	for _, file := range files {
+		// handle scenario for update metadata where we overwrite the file which triggers a delete and create event
+		// in this scenario the file was deleted at one point so we handle it here but we need to ensure if it still
+		// exists we do not remove it if it not a directory
+		stat, err := os.Stat(file)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				continue
+			}
+		}
 
-		// file could be a specific file or a directory
-		for _, file := range files {
+		// need to check if err is not nil since still a valid code path from above if we get a specific error
+		if err == nil && !stat.IsDir() {
+			log.Debug().Msgf("file %s still exists, not removing it", file)
+			continue
+		}
+
+		dir := filepath.Dir(file)
+
+		if mediaForDirectory, ok := mediaCache.GetKey(dir); !ok {
+			log.Debug().Msgf("Parent dir for file %s does not have any media", file)
+			continue
+		} else {
+
 		mediaLoop:
 			for _, media := range mediaForDirectory {
 				if media.Path == file || media.ParentDir == file {
@@ -451,11 +472,63 @@ func (s *mediaService) HandleFileSystemDeletions(ctx context.Context, rootDirect
 					break mediaLoop
 				}
 			}
-
 		}
 
-		return nil
 	}
+
+	return nil
+
+}
+
+func (s *mediaService) UpdateItem(ctx context.Context, id string, newContent []byte) (types.MediaItem, error) {
+	item, err := s.getMediaItemFromId(ctx, id)
+	if err != nil {
+		return types.MediaItem{}, err
+	}
+
+	ignoreList := ignorelist.GetIgnoreList()
+	ignoreList.AddFile(item.Path)
+	defer ignoreList.RemoveFile(item.Path)
+
+	err = os.WriteFile(item.Path, newContent, os.ModeType)
+	if err != nil {
+		log.Err(err).Msgf("Failed to write new content for file %s", item.Id)
+
+		return types.MediaItem{}, err
+	}
+
+	// File is now changed, re-process it
+	wp := utils.NewWorkerPool(1)
+	items := make(chan types.MediaItem, 1)
+	wg := new(sync.WaitGroup)
+
+	wg.Add(1)
+	s.processFile(item.Path, wg, wp, items)
+	wg.Wait()
+
+	newItem := <-items
+	if item.Id != newItem.Id {
+		if parentDirCache, ok := mediaCache.GetKey(item.ParentDir); !ok {
+			return types.MediaItem{}, fmt.Errorf("parent dir for item %q is not in the cache", item.Id)
+		} else {
+			newCache := make([]types.MediaItem, len(parentDirCache))
+
+			for i, cachedItem := range parentDirCache {
+				// same item as the input, need to set it to the updated item
+				if cachedItem.Id == item.Id {
+					newCache[i] = newItem
+				} else {
+					newCache[i] = cachedItem
+				}
+			}
+
+			mediaCache.Add(item.ParentDir, newCache)
+
+			return newItem, nil
+		}
+	}
+
+	return newItem, nil
 }
 
 func NewMediaService() MediaApi {
