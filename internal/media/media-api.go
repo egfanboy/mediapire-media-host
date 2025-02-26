@@ -16,5 +16,6 @@ type MediaApi interface {
 	DeleteMedia(ctx context.Context, ids []string) error
 	CleanupDownloadContent(ctx context.Context, transferId string) error
 	GetMediaArt(ctx context.Context, id string) ([]byte, error)
-	HandleFileSystemDeletions(ctx context.Context, rootDirectory string, files []string) error
+	HandleFileSystemDeletions(ctx context.Context, files []string) error
+	UpdateItem(ctx context.Context, id string, newContent []byte) (types.MediaItem, error)
 }
