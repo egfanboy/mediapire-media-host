@@ -14,6 +14,12 @@ const (
 	pathArt  = "/media/{mediaId}/art"
 )
 
+var (
+	queryParamOptionalMediaType = router.QueryParam{Name: "mediaType", Required: false}
+	queryParamMediaId           = router.QueryParam{Name: "mediaId", Required: true}
+	queryParamReturnContent     = router.QueryParam{Name: "returnContent", Required: true}
+)
+
 type mediaController struct {
 	builders []func() router.RouteBuilder
 	service  MediaApi
@@ -31,18 +37,39 @@ func (c mediaController) GetApis() (routes []router.RouteBuilder) {
 func (c mediaController) GetMedia() router.RouteBuilder {
 	return router.NewV1RouteBuilder().
 		SetMethod(http.MethodOptions, http.MethodGet).
-		AddQueryParam(router.QueryParam{Name: "mediaType", Required: false}).
+		AddQueryParam(queryParamOptionalMediaType).
 		SetPath(basePath).
 		SetReturnCode(http.StatusOK).
 		SetHandler(func(request *http.Request, p router.RouteParams) (interface{}, error) {
 			mediaTypes := make([]string, 0)
 
-			if p.Params["mediaType"] != "" {
-				mediaTypes = strings.Split(p.Params["mediaType"], ",")
+			mediaTypeParam := p.Params[queryParamOptionalMediaType.Name]
+			if mediaTypeParam != "" {
+				mediaTypes = strings.Split(mediaTypeParam, ",")
 			}
 
 			items, err := c.service.GetMedia(request.Context(), mediaTypes)
 			return items, err
+		})
+}
+
+func (c mediaController) GetMediaById() router.RouteBuilder {
+	return router.NewV1RouteBuilder().
+		SetMethod(http.MethodOptions, http.MethodGet).
+		AddQueryParam(queryParamMediaId).
+		AddQueryParam(queryParamReturnContent).
+		SetPath(basePath).
+		SetReturnCode(http.StatusOK).
+		SetHandler(func(request *http.Request, p router.RouteParams) (interface{}, error) {
+			mediaId := router.MustGetQueryValue(p, queryParamMediaId)
+			returnContent := router.MustGetQueryValue(p, queryParamReturnContent)
+
+			// underlying router gives params as strings
+			if returnContent == "true" {
+				return c.service.GetMediaItemByIdWithContent(request.Context(), mediaId)
+			} else {
+				return c.service.GetMediaItemById(request.Context(), mediaId)
+			}
 		})
 }
 
@@ -92,7 +119,13 @@ func (c mediaController) DownloadMedia() router.RouteBuilder {
 func initController() mediaController {
 	c := mediaController{service: NewMediaService()}
 
-	c.builders = append(c.builders, c.GetMedia, c.StreamMedia, c.DownloadMedia, c.GetMediaArt)
+	c.builders = append(c.builders,
+		c.GetMedia,
+		c.StreamMedia,
+		c.DownloadMedia,
+		c.GetMediaArt,
+		c.GetMediaById,
+	)
 
 	return c
 }

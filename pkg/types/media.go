@@ -10,4 +10,9 @@ type MediaItem struct {
 	ParentDir string `json:"-"`
 }
 
+type MediaItemWithContent struct {
+	MediaItem
+	Content []byte `json:"content"`
+}
+
 type DownloadRequest []string

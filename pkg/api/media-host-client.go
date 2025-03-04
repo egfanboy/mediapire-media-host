@@ -23,6 +23,8 @@ type MediaHostApi interface {
 	DownloadTransfer(ctx context.Context, transferId string) ([]byte, *http.Response, error)
 	GetSettings(ctx context.Context) (types.MediaHostSettings, *http.Response, error)
 	GetMediaArt(ctx context.Context, mediaId string) ([]byte, *http.Response, error)
+	GetMediaById(ctx context.Context, mediaId string) (types.MediaItem, *http.Response, error)
+	GetMediaByIdWithContent(ctx context.Context, mediaId string) (types.MediaItemWithContent, *http.Response, error)
 }
 
 func buildUriFromHost(h types.Host, apiUri string) string {
@@ -145,6 +147,50 @@ func (c *mediaHostClient) GetMediaArt(ctx context.Context, mediaId string) ([]by
 	return b, r, err
 }
 
+func (c *mediaHostClient) GetMediaById(ctx context.Context, mediaId string) (result types.MediaItem, r *http.Response, err error) {
+	data, r, err := c.getMediaById(ctx, mediaId, false)
+	if err != nil {
+		return
+	}
+
+	err = json.Unmarshal(data, &result)
+
+	return
+}
+
+func (c *mediaHostClient) GetMediaByIdWithContent(ctx context.Context, mediaId string) (result types.MediaItemWithContent, r *http.Response, err error) {
+	data, r, err := c.getMediaById(ctx, mediaId, true)
+	if err != nil {
+		return
+	}
+
+	err = json.Unmarshal(data, &result)
+
+	return
+}
+
+func (c *mediaHostClient) getMediaById(ctx context.Context, mediaId string, returnContent bool) (result []byte, r *http.Response, err error) {
+	apiUrl := fmt.Sprintf("%s?mediaId=%s&returnContent=%t", baseMediaPath, mediaId, returnContent)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, buildUriFromHost(c.host, apiUrl), nil)
+	if err != nil {
+		return
+	}
+
+	r, err = http.DefaultClient.Do(req)
+	if err != nil {
+		return
+	}
+
+	result, err = io.ReadAll(r.Body)
+	defer r.Body.Close()
+	if err != nil {
+		return
+	}
+
+	return
+
+}
 func NewClient(h types.Host) MediaHostApi {
 	return &mediaHostClient{host: h}
 }

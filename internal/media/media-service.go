@@ -227,7 +227,7 @@ func (s *mediaService) StreamMedia(ctx context.Context, id string) ([]byte, erro
 }
 
 func (s *mediaService) getFilePathFromId(ctx context.Context, id string) (string, error) {
-	item, err := s.getMediaItemFromId(ctx, id)
+	item, err := s.GetMediaItemById(ctx, id)
 	if err != nil {
 		return "", err
 	}
@@ -235,7 +235,7 @@ func (s *mediaService) getFilePathFromId(ctx context.Context, id string) (string
 	return item.Path, nil
 }
 
-func (s *mediaService) getMediaItemFromId(ctx context.Context, id string) (types.MediaItem, error) {
+func (s *mediaService) GetMediaItemById(ctx context.Context, id string) (types.MediaItem, error) {
 	if item, ok := mediaLookup.GetKey(id); ok {
 		return item, nil
 	}
@@ -265,7 +265,7 @@ func (s *mediaService) DownloadMedia(ctx context.Context, ids []string) ([]byte,
 	items := make([]types.MediaItem, len(ids))
 
 	for i, itemId := range ids {
-		item, err := s.getMediaItemFromId(ctx, itemId)
+		item, err := s.GetMediaItemById(ctx, itemId)
 		if err != nil {
 			log.Err(err).Msgf("Failed to get item with id %q", itemId)
 			return nil, err
@@ -322,7 +322,7 @@ func (s *mediaService) DeleteMedia(ctx context.Context, ids []string) error {
 	failedToDelete := make([]string, 0)
 
 	for _, itemId := range ids {
-		item, err := s.getMediaItemFromId(ctx, itemId)
+		item, err := s.GetMediaItemById(ctx, itemId)
 		if err != nil {
 			failedToDelete = append(failedToDelete, fmt.Sprintf("Failed to get item with id %q", itemId))
 
@@ -384,7 +384,7 @@ func (s *mediaService) CleanupDownloadContent(ctx context.Context, transferId st
 }
 
 func (s *mediaService) GetMediaArt(ctx context.Context, id string) ([]byte, error) {
-	item, err := s.getMediaItemFromId(ctx, id)
+	item, err := s.GetMediaItemById(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -481,7 +481,7 @@ func (s *mediaService) HandleFileSystemDeletions(ctx context.Context, files []st
 }
 
 func (s *mediaService) UpdateItem(ctx context.Context, id string, newContent []byte) (types.MediaItem, error) {
-	item, err := s.getMediaItemFromId(ctx, id)
+	item, err := s.GetMediaItemById(ctx, id)
 	if err != nil {
 		return types.MediaItem{}, err
 	}
@@ -529,6 +529,26 @@ func (s *mediaService) UpdateItem(ctx context.Context, id string, newContent []b
 	}
 
 	return newItem, nil
+}
+
+func (s *mediaService) GetMediaItemByIdWithContent(ctx context.Context, id string) (result types.MediaItemWithContent, err error) {
+	log.Info().Msg("Start: GetMediaByIdWithContent")
+	mediaItem, err := s.GetMediaItemById(ctx, id)
+	if err != nil {
+		return
+	}
+
+	content, err := s.StreamMedia(ctx, id)
+	if err != nil {
+		return
+	}
+
+	result.MediaItem = mediaItem
+	result.Content = content
+
+	log.Info().Msg("End: GetMediaByIdWithContent")
+
+	return
 }
 
 func NewMediaService() MediaApi {
