@@ -3,6 +3,7 @@ package media
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path"
 	"time"
@@ -130,7 +131,65 @@ func handleDeleteMessage(ctx context.Context, msg amqp091.Delivery) error {
 	return err
 }
 
+func handleUpdateMedia(ctx context.Context, msg amqp091.Delivery) error {
+	log.Info().Msgf("Handling message for %s", messaging.TopicUpdateMedia)
+
+	var message messaging.UpdateMediaMessage
+	err := json.Unmarshal(msg.Body, &message)
+	if err != nil {
+		log.Err(err).Msg("failed to unmarshal message")
+
+		return err
+	}
+
+	if items, ok := message.Items[app.GetApp().NodeId]; !ok {
+		log.Info().Msgf("Ignoring message for %s since no updates are for this node.", messaging.TopicUpdateMedia)
+
+		return nil
+	} else {
+		for _, item := range items {
+			mediaService := NewMediaService()
+
+			_, err := mediaService.UpdateItem(ctx, item.MediaId, item.Content)
+			if err != nil {
+				msg := fmt.Sprintf("failed to update item %s", item.MediaId)
+				log.Err(err).Msg(msg)
+
+				sendMediaUpdateMessage(ctx, message.ChangesetId, &msg)
+
+				return err
+			}
+
+		}
+
+		sendMediaUpdateMessage(ctx, message.ChangesetId, nil)
+	}
+
+	log.Info().Msgf("Finished handling message for topic %s", messaging.TopicUpdateMedia)
+	return nil
+}
+
+func sendMediaUpdateMessage(ctx context.Context, changesetId string, failureReason *string) {
+	msg := messaging.MediaUpdatedMessage{
+		ChangesetId: changesetId,
+		NodeId:      app.GetApp().NodeId,
+	}
+
+	if failureReason != nil {
+		msg.Success = false
+		msg.FailureReason = failureReason
+	} else {
+		msg.Success = true
+	}
+
+	err := rabbitmq.PublishMessage(ctx, messaging.TopicMediaUpdated, msg)
+	if err != nil {
+		log.Err(err).Msg("Failed to send media updated message")
+	}
+}
+
 func init() {
 	rabbitmq.RegisterConsumer(handleTransferMessage, messaging.TopicTransfer)
 	rabbitmq.RegisterConsumer(handleDeleteMessage, messaging.TopicDeleteMedia)
+	rabbitmq.RegisterConsumer(handleUpdateMedia, messaging.TopicUpdateMedia)
 }

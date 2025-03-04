@@ -18,4 +18,6 @@ type MediaApi interface {
 	GetMediaArt(ctx context.Context, id string) ([]byte, error)
 	HandleFileSystemDeletions(ctx context.Context, files []string) error
 	UpdateItem(ctx context.Context, id string, newContent []byte) (types.MediaItem, error)
+	GetMediaItemById(ctx context.Context, id string) (types.MediaItem, error)
+	GetMediaItemByIdWithContent(ctx context.Context, id string) (types.MediaItemWithContent, error)
 }

@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/dhowden/tag v0.0.0-20220618230019-adf36e896086
-	github.com/egfanboy/mediapire-common v0.0.0-20250221235900-73e3c8ad112f
+	github.com/egfanboy/mediapire-common v0.0.0-20250304013840-abfbad75efae
 	github.com/fsnotify/fsnotify v1.5.4
 	github.com/google/uuid v1.4.0
 	github.com/gorilla/mux v1.8.0
@@ -35,4 +35,5 @@ require (
 
 //  uncomment for local development
 // replace github.com/egfanboy/mediapire-common => ../mediapire-common
+
 // replace github.com/egfanboy/mediapire-manager => ../mediapire-manager
