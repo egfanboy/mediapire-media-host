@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/egfanboy/mediapire-common/messaging"
 	"github.com/egfanboy/mediapire-media-host/internal/app"
 	"github.com/egfanboy/mediapire-media-host/internal/consul"
 	"github.com/egfanboy/mediapire-media-host/internal/fs"
@@ -129,6 +130,8 @@ func initiliazeApp() {
 	}
 
 	log.Debug().Msg("Registration successful")
+
+	rabbitmq.PublishMessage(ctx, messaging.TopicNodeReady, messaging.NodeReadyMessage{NodeId: app.GetApp().NodeId})
 
 	log.Info().Msg("App initialized")
 
