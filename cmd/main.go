@@ -131,7 +131,13 @@ func initiliazeApp() {
 
 	log.Debug().Msg("Registration successful")
 
-	rabbitmq.PublishMessage(ctx, messaging.TopicNodeReady, messaging.NodeReadyMessage{NodeId: app.GetApp().NodeId})
+	rabbitmq.PublishMessage(
+		ctx,
+		messaging.TopicNodeReady,
+		messaging.NodeReadyMessage{
+			Id:   app.GetApp().NodeId,
+			Name: app.GetApp().Name,
+		})
 
 	log.Info().Msg("App initialized")
 

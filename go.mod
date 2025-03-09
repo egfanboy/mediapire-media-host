@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/dhowden/tag v0.0.0-20220618230019-adf36e896086
-	github.com/egfanboy/mediapire-common v0.0.0-20250305011245-327751234eec
+	github.com/egfanboy/mediapire-common v0.0.0-20250309025123-c43f48171275
 	github.com/fsnotify/fsnotify v1.5.4
 	github.com/google/uuid v1.4.0
 	github.com/gorilla/mux v1.8.0
