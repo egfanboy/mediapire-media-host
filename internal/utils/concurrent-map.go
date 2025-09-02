@@ -59,3 +59,11 @@ func NewConcurrentMap[K comparable, T any]() *ConcurrentMap[K, T] {
 	}
 	return m
 }
+
+func NewConcurrentMapFromData[K comparable, T any](data map[K]T) *ConcurrentMap[K, T] {
+	m := &ConcurrentMap[K, T]{
+		mu:   sync.Mutex{},
+		data: data,
+	}
+	return m
+}
