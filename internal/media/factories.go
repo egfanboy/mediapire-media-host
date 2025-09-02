@@ -1,15 +1,13 @@
 package media
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
-	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/egfanboy/mediapire-media-host/internal/utils"
 	"github.com/egfanboy/mediapire-media-host/pkg/types"
 	"github.com/google/uuid"
 
@@ -17,7 +15,7 @@ import (
 	"github.com/tcolgate/mp3"
 )
 
-type mediaFactory func(path string, ext string) (item types.MediaItem, err error)
+type mediaFactory func(path string, ext string, cache *utils.ConcurrentMap[string, string]) (item types.MediaItem, err error)
 
 var mediaTypeFactory = map[string]mediaFactory{
 	"mp3": mp3Factory,
@@ -31,18 +29,23 @@ func getFactory(ext string) mediaFactory {
 	}
 }
 
-func baseFactory(path, ext string) (item types.MediaItem, err error) {
+func baseFactory(path, ext string, cache *utils.ConcurrentMap[string, string]) (item types.MediaItem, err error) {
 	item.Path = path
 	item.Extension = ext
 	item.ParentDir = filepath.Dir(path)
 	item.Name = strings.Replace(filepath.Base(path), "."+ext, "", 1)
-	item.Id = uuid.New().String()
+
+	if id, ok := cache.GetKey(item.Path); !ok {
+		item.Id = uuid.New().String()
+	} else {
+		item.Id = id
+	}
 
 	return
 }
 
-func mp3Factory(path string, ext string) (item types.MediaItem, err error) {
-	item, err = baseFactory(path, ext)
+func mp3Factory(path string, ext string, cache *utils.ConcurrentMap[string, string]) (item types.MediaItem, err error) {
+	item, err = baseFactory(path, ext, cache)
 	if err != nil {
 		return
 	}
@@ -84,19 +87,11 @@ func mp3Factory(path string, ext string) (item types.MediaItem, err error) {
 
 	metadata.Length = songTime
 	item.Metadata = metadata
-
-	item.Id = hashMp3FileForId(item)
+	/* Use the song title as the name of the item as opposed to the file name.
+	** This is in case the name of the song was changed through metadata but the file name
+	** remains the same.
+	 */
+	item.Name = metadata.Title
 
 	return
-}
-
-// encodes metadata into a hash string and return last 12 digits to use as an id
-func hashMp3FileForId(item types.MediaItem) string {
-	metadata := item.Metadata.(Mp3Metadata)
-
-	data := fmt.Sprintf("%s-%s-%s-%s-%d", item.ParentDir, metadata.Artist, metadata.Album, metadata.Title, metadata.TrackOf)
-	hash := sha256.Sum256([]byte(data))
-	hashStr := hex.EncodeToString(hash[:])
-
-	return hashStr[len(hashStr)-12:]
 }

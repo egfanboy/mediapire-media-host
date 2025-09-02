@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -101,7 +102,7 @@ func (s *mediaService) ScanDirectories(directories ...string) (err error) {
 	return
 }
 
-func (s *mediaService) scanDirectory(directory string, wg *sync.WaitGroup, wp utils.WorkerPool, items chan<- types.MediaItem) error {
+func (s *mediaService) scanDirectory(directory string, wg *sync.WaitGroup, wp utils.WorkerPool, cache *utils.ConcurrentMap[string, string], items chan<- types.MediaItem) error {
 	defer wg.Done()
 
 	visit := func(path string, info os.FileInfo, err error) error {
@@ -112,14 +113,14 @@ func (s *mediaService) scanDirectory(directory string, wg *sync.WaitGroup, wp ut
 		// ignore itself to avoid infinite loop
 		if info.Mode().IsDir() && path != directory {
 			wg.Add(1)
-			go s.scanDirectory(path, wg, wp, items)
+			go s.scanDirectory(path, wg, wp, cache, items)
 			// this will skip this directory since we spawn a goroutine to handle it
 			return filepath.SkipDir
 		}
 
 		if info.Mode().IsRegular() && info.Size() > 0 {
 			wg.Add(1)
-			go s.processFile(path, wg, wp, items)
+			go s.processFile(path, wg, wp, cache, items)
 		}
 
 		return nil
@@ -132,7 +133,7 @@ func (s *mediaService) scanDirectory(directory string, wg *sync.WaitGroup, wp ut
 	return filepath.Walk(directory, visit)
 }
 
-func (s *mediaService) processFile(path string, wg *sync.WaitGroup, wp utils.WorkerPool, items chan<- types.MediaItem) {
+func (s *mediaService) processFile(path string, wg *sync.WaitGroup, wp utils.WorkerPool, cache *utils.ConcurrentMap[string, string], items chan<- types.MediaItem) {
 	defer wg.Done()
 
 	ext := filepath.Ext(path)
@@ -151,7 +152,7 @@ func (s *mediaService) processFile(path string, wg *sync.WaitGroup, wp utils.Wor
 
 	factory := getFactory(ext)
 
-	item, err := factory(path, ext)
+	item, err := factory(path, ext, cache)
 	if err != nil {
 		log.Err(err).Msgf("failed to create media item for file %s", filepath.Base(path))
 		return
@@ -160,7 +161,7 @@ func (s *mediaService) processFile(path string, wg *sync.WaitGroup, wp utils.Wor
 	items <- item
 }
 
-func (s *mediaService) processItems(items <-chan types.MediaItem, result chan<- map[string][]types.MediaItem) {
+func (s *mediaService) processItems(items <-chan types.MediaItem, result chan<- map[string][]types.MediaItem, cache *utils.ConcurrentMap[string, string]) {
 	mediaItems := map[string][]types.MediaItem{}
 
 	for item := range items {
@@ -170,12 +171,19 @@ func (s *mediaService) processItems(items <-chan types.MediaItem, result chan<- 
 		}
 
 		mediaItems[item.ParentDir] = append(mediaItems[item.ParentDir], item)
+
+		cache.Add(item.Path, item.Id)
 	}
 
 	result <- mediaItems
 }
 
 func (s *mediaService) ScanDirectory(directory string) (err error) {
+	cache, err := s.readMediaCache()
+	if err != nil {
+		return
+	}
+
 	workers := 2 * runtime.GOMAXPROCS(0)
 
 	wp := utils.NewWorkerPool(workers)
@@ -184,12 +192,12 @@ func (s *mediaService) ScanDirectory(directory string) (err error) {
 
 	wg := new(sync.WaitGroup)
 
-	go s.processItems(items, result)
+	go s.processItems(items, result, cache)
 
 	wg.Add(1)
 
 	// will walk through directories and spawn goroutines to handle subdirectories and files
-	s.scanDirectory(directory, wg, wp, items)
+	s.scanDirectory(directory, wg, wp, cache, items)
 
 	wg.Wait()
 
@@ -200,6 +208,8 @@ func (s *mediaService) ScanDirectory(directory string) (err error) {
 	for k, v := range results {
 		mediaCache.Add(k, v)
 	}
+
+	go s.saveIdToPathMapping(cache)
 
 	return
 }
@@ -503,32 +513,34 @@ func (s *mediaService) UpdateItem(ctx context.Context, id string, newContent []b
 	wg := new(sync.WaitGroup)
 
 	wg.Add(1)
-	s.processFile(item.Path, wg, wp, items)
+	// Only processing the one file and we already have the id of it so pass the cache as just the item for this item
+	s.processFile(item.Path, wg, wp, utils.NewConcurrentMapFromData(map[string]string{item.Path: item.Id}), items)
 	wg.Wait()
 
 	newItem := <-items
-	if item.Id != newItem.Id {
-		if parentDirCache, ok := mediaCache.GetKey(item.ParentDir); !ok {
-			return types.MediaItem{}, fmt.Errorf("parent dir for item %q is not in the cache", item.Id)
-		} else {
-			newCache := make([]types.MediaItem, len(parentDirCache))
 
-			for i, cachedItem := range parentDirCache {
-				// same item as the input, need to set it to the updated item
-				if cachedItem.Id == item.Id {
-					newCache[i] = newItem
-				} else {
-					newCache[i] = cachedItem
-				}
+	// Update the lookup cache with the new item
+	mediaLookup.Add(item.Id, newItem)
+	// Update the cache top level cache with the new item
+	if parentDirCache, ok := mediaCache.GetKey(item.ParentDir); !ok {
+		return types.MediaItem{}, fmt.Errorf("parent dir for item %q is not in the cache", item.Id)
+	} else {
+		newCache := make([]types.MediaItem, len(parentDirCache))
+
+		for i, cachedItem := range parentDirCache {
+			// same item as the input, need to set it to the updated item
+			if cachedItem.Id == item.Id {
+				newCache[i] = newItem
+			} else {
+				newCache[i] = cachedItem
 			}
-
-			mediaCache.Add(item.ParentDir, newCache)
-
-			return newItem, nil
 		}
+
+		mediaCache.Add(item.ParentDir, newCache)
+
+		return newItem, nil
 	}
 
-	return newItem, nil
 }
 
 func (s *mediaService) GetMediaItemByIdWithContent(ctx context.Context, id string) (result types.MediaItemWithContent, err error) {
@@ -548,6 +560,71 @@ func (s *mediaService) GetMediaItemByIdWithContent(ctx context.Context, id strin
 
 	log.Info().Msg("End: GetMediaByIdWithContent")
 
+	return
+}
+
+func (s *mediaService) saveIdToPathMapping(newCache *utils.ConcurrentMap[string, string]) (err error) {
+	cache, err := s.readMediaCache()
+	if err != nil {
+		return
+	}
+
+	for k, v := range newCache.Get() {
+		cache.Add(k, v)
+	}
+
+	mappingBytes, err := json.Marshal(cache.Get())
+	if err != nil {
+		log.Error().Msg("Failed to marshal id to path mapping")
+		return
+	}
+
+	basePath, err := app.GetBasePath()
+	if err != nil {
+		return
+	}
+
+	mappingFilePath := path.Join(basePath, "media.json")
+	err = os.WriteFile(mappingFilePath, mappingBytes, os.ModePerm)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to save id to path mapping to file")
+		return
+	}
+
+	return nil
+}
+
+func (s *mediaService) readMediaCache() (result *utils.ConcurrentMap[string, string], err error) {
+	basePath, err := app.GetBasePath()
+	if err != nil {
+		return
+	}
+	mappingFilePath := path.Join(basePath, "media.json")
+
+	f, err := os.OpenFile(mappingFilePath, os.O_RDONLY|os.O_CREATE, os.ModePerm)
+	if err != nil {
+		log.Error().Msg("Failed to open id to path mapping file.")
+		return
+	}
+
+	defer f.Close()
+
+	existingContent, err := io.ReadAll(f)
+	if err != nil {
+		log.Error().Msg("Failed to read content of id to path mapping file.")
+	}
+
+	var cache map[string]string
+	// Read existing content if there is any
+	if len(existingContent) > 0 {
+		if err = json.Unmarshal(existingContent, &cache); err != nil {
+			return nil, err
+		}
+	} else {
+		cache = make(map[string]string)
+	}
+
+	result = utils.NewConcurrentMapFromData(cache)
 	return
 }
 

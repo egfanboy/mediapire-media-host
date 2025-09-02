@@ -9,7 +9,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func getBasePath() (string, error) {
+func GetBasePath() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
@@ -19,7 +19,7 @@ func getBasePath() (string, error) {
 }
 
 func getDownloadPath() (string, error) {
-	basePath, err := getBasePath()
+	basePath, err := GetBasePath()
 	if err != nil {
 		return "", err
 	}
@@ -28,7 +28,7 @@ func getDownloadPath() (string, error) {
 }
 
 func getArtPath() (string, error) {
-	basePath, err := getBasePath()
+	basePath, err := GetBasePath()
 	if err != nil {
 		return "", err
 	}
