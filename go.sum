@@ -26,6 +26,8 @@ github.com/dhowden/tag v0.0.0-20220618230019-adf36e896086 h1:ORubSQoKnncsBnR4zD9
 github.com/dhowden/tag v0.0.0-20220618230019-adf36e896086/go.mod h1:Z3Lomva4pyMWYezjMAU5QWRh0p1VvO4199OHlFnyKkM=
 github.com/egfanboy/mediapire-common v0.0.0-20250309025123-c43f48171275 h1:DmVEwXS/9W+on2mSxwb+hQL/r2Haa4NsSsepAFyYU+o=
 github.com/egfanboy/mediapire-common v0.0.0-20250309025123-c43f48171275/go.mod h1:PfxxoHTUvFmiaEvmipwuReMmo8jQqe9mhHtWODuL7OI=
+github.com/egfanboy/mediapire-common v0.0.0-20250903231047-1ebeb5a7595e h1:Rbkw/FyKMQ0Jp7q5Zu+f+da9KXo7AYEV0kjQSUemwUs=
+github.com/egfanboy/mediapire-common v0.0.0-20250903231047-1ebeb5a7595e/go.mod h1:PfxxoHTUvFmiaEvmipwuReMmo8jQqe9mhHtWODuL7OI=
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
 github.com/fatih/color v1.9.0/go.mod h1:eQcE1qtQxscV5RaZvpXrrb8Drkc3/DdQ+uUYCNjL+zU=
 github.com/fatih/color v1.13.0 h1:8LOYc1KYPPmyKMuN8QV2DNRWNbLo6LZ0iLs8+mlH53w=
