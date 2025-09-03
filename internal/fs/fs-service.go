@@ -8,8 +8,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/egfanboy/mediapire-common/messaging"
+	"github.com/egfanboy/mediapire-media-host/internal/app"
 	"github.com/egfanboy/mediapire-media-host/internal/fs/ignorelist"
 	"github.com/egfanboy/mediapire-media-host/internal/media"
+	"github.com/egfanboy/mediapire-media-host/internal/rabbitmq"
 	"github.com/egfanboy/mediapire-media-host/internal/utils"
 
 	"github.com/fsnotify/fsnotify"
@@ -70,6 +73,8 @@ func (w *fsWatcher) ProcessEvents(events []fsnotify.Event) {
 			err := mediaService.ScanDirectory(directory)
 			if err != nil {
 				log.Err(err).Msgf("Failed to scan content in directory %s", relativePath)
+			} else {
+				w.sendMediaUpdateMessage()
 			}
 
 		}
@@ -130,6 +135,14 @@ func (w *fsWatcher) ProcessDeletedItems(events []fsnotify.Event) {
 		}
 	}
 
+	w.sendMediaUpdateMessage()
+}
+
+func (w *fsWatcher) sendMediaUpdateMessage() {
+	err := rabbitmq.PublishMessage(context.Background(), messaging.TopicNodeMediaChanged, messaging.NodeReadyMessage{Name: app.GetApp().Name, Id: app.GetApp().NodeId})
+	if err != nil {
+		log.Err(err).Msg("Failed to send media update message")
+	}
 }
 
 func (w *fsWatcher) Stop() {
