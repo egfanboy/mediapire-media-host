@@ -59,12 +59,36 @@ func mp3Factory(path string, ext string, cache *utils.ConcurrentMap[string, stri
 
 	s := io.ReadSeeker(f)
 
+	var metadata *Mp3Metadata
 	m, err := tag.ReadFrom(s)
+	if err != nil {
+		if err == tag.ErrNoTagsFound {
+			metadata = &Mp3Metadata{
+				Artist: "unknown",
+				Title: strings.TrimSuffix(
+					filepath.Base(path),
+					filepath.Ext(path),
+				),
+				Album:      "unknown",
+				Genre:      "unknown",
+				TrackIndex: 0,
+				TrackOf:    0,
+			}
+		} else {
+			return
+		}
+	}
+
+	if metadata == nil {
+		parsedMetadata := mp3MetadataFromTag(m)
+		metadata = &parsedMetadata
+	}
+
+	// reset file to begining before mp3 decoder parses it
+	_, err = f.Seek(0, io.SeekStart)
 	if err != nil {
 		return
 	}
-
-	metadata := mp3MetadataFromTag(m)
 
 	d := mp3.NewDecoder(f)
 	songTime := 0.0
@@ -86,7 +110,7 @@ func mp3Factory(path string, ext string, cache *utils.ConcurrentMap[string, stri
 	}
 
 	metadata.Length = songTime
-	item.Metadata = metadata
+	item.Metadata = *metadata
 	/* Use the song title as the name of the item as opposed to the file name.
 	** This is in case the name of the song was changed through metadata but the file name
 	** remains the same.
