@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/rabbitmq/amqp091-go"
@@ -20,24 +21,55 @@ func PublishMessage(ctx context.Context, routingKey string, messageBody interfac
 		return err
 	}
 
+	var publishErr error
 	for i := 0; i < maxRetries; i++ {
-		if env.Channel.IsClosed() {
-			// last iteration
-			if i+1 == maxRetries {
-				log.Error().Msgf("channel was never opened, cannot send message for routing key %s", routingKey)
-				return errors.New("channel was not opened to send message")
-			}
-			log.Debug().Msgf("Channel is closed, waiting for it to open. Retry %d out of %d", i+1, maxRetries)
-			time.Sleep(time.Second * 1)
+		env.mu.Lock()
+		if env.closing {
+			env.mu.Unlock()
+			return errors.New("rabbitmq connection is closing")
+		}
 
-		} else {
-			break
+		if env.Channel == nil || env.Channel.IsClosed() {
+			log.Debug().Msgf("RabbitMQ channel is closed, reconnecting before publishing. Retry %d out of %d", i+1, maxRetries)
+			publishErr = env.connectLocked(ctx)
+			if publishErr != nil {
+				env.mu.Unlock()
+				if err := waitForRetry(ctx); err != nil {
+					return err
+				}
+				continue
+			}
+		}
+
+		// TODO: make exchange a constant
+		publishErr = env.Channel.PublishWithContext(ctx, "mediapire-exch", routingKey, false, false, amqp091.Publishing{
+			ContentType: "application/json",
+			Body:        body,
+		})
+		env.mu.Unlock()
+
+		if publishErr == nil {
+			return nil
+		}
+
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+
+		log.Err(publishErr).Msgf("Failed to publish message for routing key %s. Retry %d out of %d", routingKey, i+1, maxRetries)
+		if err := waitForRetry(ctx); err != nil {
+			return err
 		}
 	}
 
-	// TODO: make exchange a constant
-	return env.Channel.PublishWithContext(ctx, "mediapire-exch", routingKey, false, false, amqp091.Publishing{
-		ContentType: "text/plain",
-		Body:        body,
-	})
+	return fmt.Errorf("failed to publish message for routing key %s after %d attempts: %w", routingKey, maxRetries, publishErr)
+}
+
+func waitForRetry(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(time.Second):
+		return nil
+	}
 }
